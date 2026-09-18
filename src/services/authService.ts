@@ -33,6 +33,7 @@ export const registerUser = async (
 };
 
 export const loginUser = async (
+  userId: number,
   email: string,
   password: string,
   storedPasswordHash: string
@@ -47,7 +48,10 @@ export const loginUser = async (
   }
 
   const token = jwt.sign(
-    { email },
+    {
+      user_id: userId,
+      email: email
+    },
     JWT_SECRET as string,
     { expiresIn: "1h" }
   );

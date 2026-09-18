@@ -1,12 +1,22 @@
 import express from "express";
+import path from "path";
 import authRoutes from "./routes/authRoutes";
+import projectRoutes from "./routes/projectRoutes";
 import { authenticateToken } from "./middleware/authMiddleware";
 
+
 const app = express();
+
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"))
+);
 
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+
+app.use("/api/projects", projectRoutes);
 
 app.get("/", (req, res) => {
   res.json({

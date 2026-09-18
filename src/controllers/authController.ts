@@ -64,6 +64,7 @@ export const login = async (req: Request, res: Response) => {
     const user = result.rows[0];
 
     const loginResult = await loginUser(
+      user.user_id,
       user.email,
       password,
       user.password
