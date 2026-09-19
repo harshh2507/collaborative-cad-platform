@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO Test</title>
+</head>
+
+<body>
+
+    <h2>Socket.IO Connection Test</h2>
+
+    <p id="status">Not connected</p>
+
+    <button id="connectBtn">Connect</button>
+    <button id="sendBtn">Send Message</button>
+
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+
+    <script>
+        let socket;
+
+        const status = document.getElementById("status");
+        const connectBtn = document.getElementById("connectBtn");
+        const sendBtn = document.getElementById("sendBtn");
+
+        connectBtn.addEventListener("click", () => {
+
+            socket = io("http://localhost:5000");
+
+            socket.on("connect", () => {
+                status.innerText = "Connected: " + socket.id;
+                console.log("Connected:", socket.id);
+            });
+
+            socket.on("disconnect", () => {
+                status.innerText = "Disconnected";
+                console.log("Disconnected");
+            });
+
+        });
+
+        sendBtn.addEventListener("click", () => {
+
+            if (!socket || !socket.connected) {
+                alert("First connect to the server!");
+                return;
+            }
+
+            socket.emit("test-message", "Hello from client!");
+
+            console.log("Message sent!");
+        });
+
+    </script>
+
+</body>
+</html>
