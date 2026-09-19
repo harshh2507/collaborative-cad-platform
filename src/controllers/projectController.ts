@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { createProject,getProjects,getProjectById,addProjectMember,getProjectMemberRole } from "../services/projectService";
+import { AuthenticatedUser } from "../types/auth";
 
 export const createProjectController = async (
   req: Request,
@@ -14,7 +15,7 @@ export const createProjectController = async (
       });
     }
 
-    const user = (req as any).user;
+    const user = (req as Request & { user: AuthenticatedUser }).user;
 
     if (!user || !user.user_id) {
       return res.status(401).json({
@@ -46,7 +47,7 @@ export const getProjectsController = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+    const user = (req as Request & { user: AuthenticatedUser }).user;
 
     if (!user || !user.user_id) {
       return res.status(401).json({
@@ -72,7 +73,7 @@ export const getProjectByIdController = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+    const user = (req as Request & { user: AuthenticatedUser }).user;
 
     if (!user || !user.user_id) {
       return res.status(401).json({
@@ -115,7 +116,7 @@ export const addProjectMemberController = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+   const user = (req as Request & { user: AuthenticatedUser }).user;
 
     if (!user || !user.user_id) {
       return res.status(401).json({
