@@ -4,15 +4,16 @@ import {
   getCadModels
 } from "../services/cadModelService";
 import {
-  getProjectMemberRole
+  getProjectMemberRole,
+  hasProjectRole
 } from "../services/projectService";
-
+import { AuthenticatedUser } from "../types/auth";
 export const createCadModelController = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+    const user = (req as Request & { user: AuthenticatedUser }).user;
 
     if (!user || !user.user_id) {
       return res.status(401).json({
@@ -43,7 +44,11 @@ if (!userRole) {
     message: "You are not a member of this project"
   });
 }
-
+if (!hasProjectRole(userRole, ["owner", "editor"])) {
+  return res.status(403).json({
+    message: "You do not have permission to upload CAD models"
+  });
+}
 
     const model = await createCadModel(
   projectId,
@@ -69,8 +74,7 @@ export const getCadModelsController = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
-
+    const user = (req as Request & { user: AuthenticatedUser }).user;
     if (!user || !user.user_id) {
       return res.status(401).json({
         message: "User authentication required"

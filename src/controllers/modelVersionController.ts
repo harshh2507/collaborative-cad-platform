@@ -1,14 +1,17 @@
 import { Request, Response } from "express";
-import { createModelVersion, getModelVersions } from "../services/modelVersionService";
-import { getProjectMemberRole } from "../services/projectService";
-
+import { createModelVersion, getModelVersions} from "../services/modelVersionService";
+import {
+  getProjectMemberRole,
+   hasProjectRole,
+  getCadModelProject
+} from "../services/projectService";
+import { AuthenticatedUser } from "../types/auth";
 export const createModelVersionController = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
-
+    const user = (req as Request & { user: AuthenticatedUser }).user;
     if (!user || !user.user_id) {
       return res.status(401).json({
         message: "User authentication required"
@@ -35,6 +38,24 @@ export const createModelVersionController = async (
         message: "You are not a member of this project"
       });
     }
+    if (!hasProjectRole(userRole, ["owner", "editor"])) {
+  return res.status(403).json({
+    message: "You do not have permission to upload model versions"
+  });
+}
+    const modelProject = await getCadModelProject(modelId);
+
+if (!modelProject) {
+  return res.status(404).json({
+    message: "CAD model not found"
+  });
+}
+
+if (modelProject.project_id !== projectId) {
+  return res.status(400).json({
+    message: "CAD model does not belong to this project"
+  });
+}
 
     const file = req.file;
 
@@ -68,7 +89,7 @@ export const getModelVersionsController = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+    const user = (req as Request & { user: AuthenticatedUser }).user;
 
     if (!user || !user.user_id) {
       return res.status(401).json({

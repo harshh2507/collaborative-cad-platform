@@ -106,3 +106,35 @@ export const getProjectMemberRole = async (
 
   return result.rows[0]?.role || null;
 };
+export const getCadModelProject = async (
+  modelId: number
+) => {
+  const result = await pool.query(
+    `SELECT project_id
+     FROM cad_models
+     WHERE model_id = $1`,
+    [modelId]
+  );
+
+  return result.rows[0] || null;
+};
+export const hasProjectRole = (
+  userRole: string,
+  allowedRoles: string[]
+) => {
+  return allowedRoles.includes(userRole);
+};
+export const isUserProjectMember = async (
+  projectId: number,
+  userId: number
+) => {
+  const result = await pool.query(
+    `SELECT project_member_id
+     FROM project_members
+     WHERE project_id = $1
+       AND user_id = $2`,
+    [projectId, userId]
+  );
+
+  return result.rows.length > 0;
+};

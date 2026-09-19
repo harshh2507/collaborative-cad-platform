@@ -90,3 +90,20 @@ export const getModelVersions = async (
 
   return result.rows;
 };
+export const getModelVersionDetails = async (
+  versionId: number
+) => {
+  const result = await pool.query(
+    `SELECT
+       mv.version_id,
+       mv.model_id,
+       cm.project_id
+     FROM model_version mv
+     JOIN cad_models cm
+       ON cm.model_id = mv.model_id
+     WHERE mv.version_id = $1`,
+    [versionId]
+  );
+
+  return result.rows[0] || null;
+};
