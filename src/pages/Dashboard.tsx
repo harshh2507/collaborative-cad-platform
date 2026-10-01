@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { projectsApi } from "../services/api";
 import { 
   Box, Users, Plus, Move, RotateCw, Maximize,
   Pin, Upload, ChevronRight, Send, Settings, 
@@ -84,6 +85,37 @@ export default function ProfessionalCADApp() {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
+
+  // Load real projects from the backend when the dashboard opens.
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const response = await projectsApi.list();
+
+        // Support either a direct array response or { projects: [...] }.
+        const backendProjects = Array.isArray(response)
+          ? response
+          : ((response as any)?.projects ?? []);
+
+        const formattedProjects: Project[] = backendProjects.map((p: any) => ({
+          id: String(p.project_id ?? p.id),
+          name: p.project_name ?? p.name ?? "Untitled Project",
+          date: p.created_at
+            ? new Date(p.created_at).toLocaleDateString()
+            : "Recently created",
+          collaborators: ["You"],
+          fileType: "CAD",
+        }));
+
+        setProjects(formattedProjects);
+      } catch (error) {
+        console.error("Failed to load projects:", error);
+        showNotify("Failed to load projects from server", "info");
+      }
+    };
+
+    loadProjects();
+  }, []);
 
   useEffect(() => {
     const hash = window.location.hash;
