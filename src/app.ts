@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import path from "path";
 import authRoutes from "./routes/authRoutes";
 import projectRoutes from "./routes/projectRoutes";
@@ -6,6 +7,7 @@ import { authenticateToken } from "./middleware/authMiddleware";
 
 
 const app = express();
+app.use(cors());
 
 app.use(
   "/uploads",

@@ -88,3 +88,39 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 };
+export const me = async (req: Request, res: Response) => {
+  try {
+    const user = (req as Request & {
+      user: {
+        user_id: number;
+        email: string;
+      };
+    }).user;
+
+    const result = await pool.query(
+      "SELECT user_id, name, email, role FROM users WHERE user_id = $1",
+      [user.user_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    const currentUser = result.rows[0];
+
+    return res.status(200).json({
+      id: currentUser.user_id,
+      name: currentUser.name,
+      email: currentUser.email,
+      role: currentUser.role
+    });
+  } catch (error) {
+    console.error("Get current user error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error"
+    });
+  }
+};
