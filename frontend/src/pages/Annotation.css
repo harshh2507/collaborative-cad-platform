@@ -1,0 +1,82 @@
+.annotation-filters {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+ 
+.annotation-filter {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  background-color: var(--panel-navy);
+  border: 1px solid var(--hairline);
+  color: var(--slate);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+ 
+.annotation-filter:hover {
+  color: var(--paper);
+}
+ 
+.annotation-filter--active {
+  color: var(--ink-navy);
+  background-color: var(--line-cyan);
+  border-color: var(--line-cyan);
+}
+ 
+.annotation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+ 
+.annotation-card {
+  display: flex;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+}
+ 
+.annotation-card__pin {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background-color: var(--annotation-amber);
+}
+ 
+.annotation-card__body {
+  flex: 1;
+}
+ 
+.annotation-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+}
+ 
+.annotation-card__author {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+ 
+.annotation-card__comment {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 0.5rem;
+}
+ 
+.annotation-card__meta {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--slate-dim);
+}
+ 
