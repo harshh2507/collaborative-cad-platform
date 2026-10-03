@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import "./App.css";
+import AnnotationPage from "./pages/Annotation";
 
 function App() {
   return (
@@ -21,7 +22,8 @@ function App() {
       
       {/* Dashboard page */}
       <Route path="/dashboard" element={<Dashboard />} />
-
+      <Route path="/projects/:id/annotations" element={<AnnotationPage />}
+/>
       {/* 404 Route - Must be at the very bottom! */}
       <Route 
         path="*" 

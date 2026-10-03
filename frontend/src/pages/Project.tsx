@@ -11,7 +11,39 @@ export default function ProjectPage() {
   const [versions, setVersions] = useState<ProjectVersion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
- 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const handleUpload = async (
+  event: React.FormEvent<HTMLFormElement>
+) => {
+  event.preventDefault();
+
+  if (!id || !selectedFile) {
+    setUploadError("Please select a CAD file first.");
+    return;
+  }
+
+  setIsUploading(true);
+  setUploadMessage("");
+  setUploadError("");
+
+  try {
+    await projectsApi.uploadCadModel(id, selectedFile);
+
+    setUploadMessage("CAD file uploaded successfully.");
+    setSelectedFile(null);
+  } catch (error: unknown) {
+    setUploadError(
+      error instanceof Error
+        ? error.message
+        : "Could not upload the CAD file."
+    );
+  } finally {
+    setIsUploading(false);
+  }
+};
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
@@ -67,7 +99,38 @@ export default function ProjectPage() {
           <Button variant="secondary">View annotations</Button>
         </Link>
       </div>
- 
+      <div className="card" style={{ padding: "20px", marginBottom: "20px" }}>
+  <h2>Upload CAD Model</h2>
+  <p>Select a CAD file to add to this project.</p>
+
+  <form onSubmit={handleUpload}>
+    <input
+      type="file"
+      onChange={(event) =>
+        setSelectedFile(event.target.files?.[0] ?? null)
+      }
+    />
+
+    {selectedFile && (
+      <p>Selected file: {selectedFile.name}</p>
+    )}
+
+    <button
+      type="submit"
+      disabled={!selectedFile || isUploading}
+    >
+      {isUploading ? "Uploading..." : "Upload CAD File"}
+    </button>
+  </form>
+
+  {uploadMessage && (
+    <p role="status">{uploadMessage}</p>
+  )}
+
+  {uploadError && (
+    <p role="alert">{uploadError}</p>
+  )}
+</div>
       <div className="project-detail">
         <div className="viewport-panel card">
           <div className="viewport-panel__canvas">

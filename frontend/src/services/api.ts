@@ -100,6 +100,44 @@ export const projectsApi = {
     request<ProjectVersion[]>(`/projects/${projectId}/versions`, {
       method: 'GET',
     }),
+    uploadCadModel: async (projectId: string, file: File) => {
+  const token = getToken();
+
+  if (!token) {
+    throw new Error("Please log in before uploading a CAD file.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${BASE_URL}/projects/${projectId}/models`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    }
+  );
+
+  const text = await response.text();
+  let data: { message?: string } = {};
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    // The server may return a non-JSON error response.
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.message || `Upload failed (${response.status}).`
+    );
+  }
+
+  return data;
+},
 };
  
 export const annotationsApi = {

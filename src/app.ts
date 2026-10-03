@@ -3,14 +3,19 @@ import path from "path";
 import authRoutes from "./routes/authRoutes";
 import projectRoutes from "./routes/projectRoutes";
 import { authenticateToken } from "./middleware/authMiddleware";
+import cors from "cors";
 
 
 const app = express();
-
 app.use(
-  "/uploads",
-  express.static(path.join(process.cwd(), "uploads"))
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
 );
+
+
 
 app.use(express.json());
 

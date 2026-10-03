@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
   Mail,
   Lock,
@@ -16,6 +17,14 @@ function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showRequirements, setShowRequirements] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { register } = useAuth();
+  const navigate = useNavigate();
 
   const requirements = {
     length: password.length >= 8,
@@ -49,19 +58,48 @@ function Register() {
     setShowRequirements(!isValid);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  
+const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setError("");
 
-    if (!passwordValid) {
-      setShowRequirements(true);
-      return;
-    }
+  if (!passwordValid) {
+    setShowRequirements(true);
+    setError("Please satisfy all password requirements.");
+    return;
+  }
 
-    console.log("Registration submitted");
+  if (password !== confirmPassword) {
+    setError("Passwords do not match.");
+    return;
+  }
 
-    // Later connect to:
-    // POST /api/auth/register
-  };
+  setIsSubmitting(true);
+
+  try {
+    await register({
+      name: name.trim(),
+      email: email.trim(),
+      password,
+    });
+
+    navigate("/dashboard");
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : err &&
+            typeof err === "object" &&
+            "message" in err &&
+            typeof err.message === "string"
+          ? err.message
+          : "Registration failed. Please try again.";
+
+    setError(message);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleGoogleRegister = () => {
     console.log("Google registration clicked");
@@ -116,10 +154,11 @@ function Register() {
               REGISTER FORM
           ================================================= */}
 
-          <form
+          <form 
             className="register-form"
             onSubmit={handleSubmit}
           >
+            {error && ( <div role="alert" className="register-error">{error}</div> )}
 
             {/* Username */}
 
@@ -140,6 +179,8 @@ function Register() {
                   id="username"
                   type="text"
                   placeholder="Enter your username"
+                  value={name}
+                  onChange={(e)=> setName(e.target.value)}
                   required
                 />
 
@@ -167,6 +208,8 @@ function Register() {
                   id="register-email"
                   type="email"
                   placeholder="Enter your email"
+                  value={email}
+                  onChange={(e)=> setEmail(e.target.value)}
                   required
                 />
 
@@ -290,6 +333,8 @@ function Register() {
                       : "password"
                   }
                   placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e)=> setConfirmPassword(e.target.value)}
                   required
                 />
 
@@ -319,10 +364,11 @@ function Register() {
             <button
               type="submit"
               className="register-button"
+              disabled={isSubmitting}
             >
 
               <span>
-                Create account
+                {isSubmitting ? "Creating account..." : "Create account"}
               </span>
 
               <ArrowRight size={19} />

@@ -4,6 +4,7 @@ import {
   loginUser
 } from "../services/authService";
 import pool from "../config/database";
+import { AuthenticatedUser } from "../types/auth";
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -85,6 +86,46 @@ export const login = async (req: Request, res: Response) => {
 
     return res.status(500).json({
       message: "Internal server error"
+    });
+  }
+};
+export const getCurrentUser = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const authenticatedReq = req as Request & {
+      user: AuthenticatedUser;
+    };
+
+    const userId = authenticatedReq.user.user_id;
+
+    const result = await pool.query(
+      `SELECT user_id, name, email, role
+       FROM users
+       WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const user = result.rows[0];
+
+    return res.status(200).json({
+      id: user.user_id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+  } catch (error) {
+    console.error("Get current user error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
     });
   }
 };
