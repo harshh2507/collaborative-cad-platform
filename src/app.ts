@@ -7,7 +7,11 @@ import { authenticateToken } from "./middleware/authMiddleware";
 
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+  })
+);
 
 app.use(
   "/uploads",
