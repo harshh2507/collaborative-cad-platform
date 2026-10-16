@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { createProject,getProjects,getProjectById,addProjectMember,getProjectMemberRole } from "../services/projectService";
+import { createProject,getProjects,getProjectById,addProjectMember,getProjectMemberRole,deleteProject } from "../services/projectService";
 import { AuthenticatedUser } from "../types/auth";
 
 export const createProjectController = async (
@@ -171,6 +171,53 @@ if (
     });
   } catch (error) {
     console.error("Add project member error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error"
+    });
+  }
+};
+
+export const deleteProjectController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const user = (req as Request & { user: AuthenticatedUser }).user;
+
+    if (!user?.user_id) {
+      return res.status(401).json({
+        message: "User authentication required"
+      });
+    }
+
+    const projectId = Number(req.params.projectId);
+
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      return res.status(400).json({
+        message: "Invalid project ID"
+      });
+    }
+
+    const result = await deleteProject(projectId, user.user_id);
+
+    if (result === "not_found") {
+      return res.status(404).json({
+        message: "Project not found"
+      });
+    }
+
+    if (result === "forbidden") {
+      return res.status(403).json({
+        message: "Only the project owner can delete this project"
+      });
+    }
+
+    return res.status(200).json({
+      message: "Project deleted successfully"
+    });
+  } catch (error) {
+    console.error("Delete project error:", error);
 
     return res.status(500).json({
       message: "Internal server error"

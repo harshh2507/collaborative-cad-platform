@@ -138,3 +138,91 @@ export const isUserProjectMember = async (
 
   return result.rows.length > 0;
 };
+
+export const deleteProject = async (
+  projectId: number,
+  userId: number
+): Promise<"deleted" | "not_found" | "forbidden"> => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Lock the project row and verify the user's membership.
+    const projectResult = await client.query(
+      `SELECT p.project_id, pm.role
+       FROM projects p
+       JOIN project_members pm
+         ON pm.project_id = p.project_id
+       WHERE p.project_id = $1
+         AND pm.user_id = $2
+       FOR UPDATE OF p`,
+      [projectId, userId]
+    );
+
+    if (projectResult.rows.length === 0) {
+      const existsResult = await client.query(
+        "SELECT project_id FROM projects WHERE project_id = $1",
+        [projectId]
+      );
+
+      await client.query("ROLLBACK");
+      return existsResult.rows.length ? "forbidden" : "not_found";
+    }
+
+    if (projectResult.rows[0].role !== "owner") {
+      await client.query("ROLLBACK");
+      return "forbidden";
+    }
+
+    // Delete dependent records in foreign-key-safe order.
+    await client.query(
+      `DELETE FROM tasks
+       WHERE annotation_id IN (
+         SELECT a.annotation_id
+         FROM annotations a
+         JOIN model_version mv ON mv.version_id = a.version_id
+         JOIN cad_models cm ON cm.model_id = mv.model_id
+         WHERE cm.project_id = $1
+       )`,
+      [projectId]
+    );
+
+    await client.query(
+      `DELETE FROM annotations
+       WHERE version_id IN (
+         SELECT mv.version_id
+         FROM model_version mv
+         JOIN cad_models cm ON cm.model_id = mv.model_id
+         WHERE cm.project_id = $1
+       )`,
+      [projectId]
+    );
+
+    await client.query(
+      `DELETE FROM model_version
+       WHERE model_id IN (
+         SELECT model_id FROM cad_models WHERE project_id = $1
+       )`,
+      [projectId]
+    );
+
+    await client.query(
+      "DELETE FROM cad_models WHERE project_id = $1",
+      [projectId]
+    );
+
+    await client.query(
+      "DELETE FROM projects WHERE project_id = $1",
+      [projectId]
+    );
+
+    await client.query("COMMIT");
+    return "deleted";
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};

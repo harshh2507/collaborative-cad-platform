@@ -9,7 +9,8 @@ import {
   createProjectController,
   getProjectsController,
   getProjectByIdController,
-  addProjectMemberController
+  addProjectMemberController,
+   deleteProjectController
 } from "../controllers/projectController";
 
 import {
@@ -36,7 +37,6 @@ import {
   updateTaskController,
   deleteTaskController
 } from "../controllers/taskController";
-
 
 const router = Router();
 
@@ -130,6 +130,11 @@ router.get(
   "/:projectId/models",
   authenticateToken,
   getCadModelsController
+);
+router.delete(
+  "/:projectId",
+  authenticateToken,
+  deleteProjectController
 );
 router.get(
   "/:projectId",
