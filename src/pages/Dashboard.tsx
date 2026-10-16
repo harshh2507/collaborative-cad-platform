@@ -1,14 +1,46 @@
-import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
+import { useEffect, useState } from "react";
 import { projectsApi } from "../services/api";
-import { 
-  Box, Users, Plus, Move, RotateCw, Maximize,
-  Pin, Upload, ChevronRight, Send, Settings, 
-  LayoutGrid, BoxSelect, Type, Ruler, Share2, 
-  FileUp, FileDown, X, Layers, Minus, Activity,
-  Mail, HardDrive, Clock, User, Scissors,
-  FolderPlus, RefreshCw, Cpu, Zap, Monitor, FileSpreadsheet, 
-  AlertTriangle, Table, Link, Package, Puzzle, MessageCircle, Store, Folder
+import ThreeDViewer from "../components/ThreeDViewer";
+import {
+  Box,
+  Users,
+  Plus,
+  Move,
+  RotateCw,
+  Maximize,
+  Undo2,
+  Redo2,
+  Pin,
+  Upload,
+  ChevronRight,
+  Send,
+  Settings,
+  LayoutGrid,
+  BoxSelect,
+  Ruler,
+  Share2,
+  FileUp,
+  FileDown,
+  X,
+  Mail,
+  HardDrive,
+  Clock,
+  User,
+  Scissors,
+  FolderPlus,
+  RefreshCw,
+  Cpu,
+  Zap,
+  Monitor,
+  FileSpreadsheet,
+  AlertTriangle,
+  Table,
+  Link,
+  Package,
+  Puzzle,
+  MessageCircle,
+  Store,
+  Folder,
 } from "lucide-react";
 
 /* ============================== Types ============================== */
@@ -59,29 +91,45 @@ interface ModelProps {
 
 export default function ProfessionalCADApp() {
   const [currentView, setCurrentView] = useState<View>("HUB");
-  const [projects, setProjects] = useState<Project[]>([]); 
+  const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  
+
   // 3D Model State
   const [modelProps, setModelProps] = useState<ModelProps>({
     wireframe: false,
     scale: 1,
     color: 0x808080, // Default Blender Grey
-    extraParts: 0
+    extraParts: 0,
   });
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
-    { id: "me", name: "My Account (You)", email: "admin@workbench.cloud", role: "Owner", joinedAt: new Date().toLocaleString(), status: "Online" }
+    {
+      id: "me",
+      name: "My Account (You)",
+      email: "admin@workbench.cloud",
+      role: "Owner",
+      joinedAt: new Date().toLocaleString(),
+      status: "Online",
+    },
   ]);
-  
-  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: "success" | "info";
+  } | null>(null);
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
-  const [pendingAnnotation, setPendingAnnotation] = useState<{pos: [number, number, number], project: any} | null>(null);
+  const [pendingAnnotation, setPendingAnnotation] = useState<{
+    pos: [number, number, number];
+    project: any;
+  } | null>(null);
   const [errorText, setErrorText] = useState("");
   const [allAnnotations, setAllAnnotations] = useState<Annotation[]>([]);
 
-  const showNotify = (message: string, type: 'success' | 'info' = 'success') => {
+  const showNotify = (
+    message: string,
+    type: "success" | "info" = "success",
+  ) => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
@@ -122,44 +170,111 @@ export default function ProfessionalCADApp() {
     if (hash.includes("#project/")) {
       const projectId = hash.split("#project/")[1];
       const mockProject: Project = {
-        id: projectId, name: "Collaborative Assembly", date: "Joined via Link", collaborators: ["Lead Designer", "You"], fileType: "STEP"
+        id: projectId,
+        name: "Collaborative Assembly",
+        date: "Joined via Link",
+        collaborators: ["Lead Designer", "You"],
+        fileType: "STEP",
       };
       setSelectedProject(mockProject);
       setCurrentView("WORKBENCH");
     }
   }, []);
 
-  const handleImport = (fileName: string, fileType: string) => {
-    const projectName = fileName.includes('.') ? fileName.split('.')[0] : fileName;
-    const newProject: Project = {
-      id: `proj_${Date.now()}`, name: projectName || "Untitled Part", date: new Date().toLocaleDateString(), collaborators: ["You"], fileType: fileType
-    };
-    setProjects([...projects, newProject]);
-    setSelectedProject(newProject);
-    setIsImportModalOpen(false);
-    setCurrentView("WORKBENCH");
-    showNotify(`Project ${newProject.name} initialized successfully!`);
+  const handleImport = async (projectName: string, description: string) => {
+    if (!projectName.trim()) return;
+
+    try {
+      const token = (() => {
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i);
+          if (!key) continue;
+          const value = localStorage.getItem(key);
+          if (value && value.split(".").length === 3) return value;
+          try {
+            const parsed = value ? JSON.parse(value) : null;
+            if (parsed?.token) return parsed.token;
+          } catch {}
+        }
+        return null;
+      })();
+
+      const response = await fetch("http://localhost:5000/api/projects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          project_name: projectName.trim(),
+          description: description.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.message || "Could not create project");
+
+      const p = data.project;
+      const newProject: Project = {
+        id: String(p.project_id ?? p.id),
+        name: p.project_name ?? projectName.trim(),
+        date: p.created_at
+          ? new Date(p.created_at).toLocaleDateString()
+          : new Date().toLocaleDateString(),
+        collaborators: ["You"],
+        fileType: "CAD",
+      };
+
+      setProjects((current) => [...current, newProject]);
+      setSelectedProject(newProject);
+      setIsImportModalOpen(false);
+      setCurrentView("WORKBENCH");
+      showNotify(`Project ${newProject.name} created successfully!`);
+    } catch (error) {
+      console.error("Project creation failed:", error);
+      showNotify(
+        error instanceof Error ? error.message : "Could not create project",
+        "info",
+      );
+    }
   };
 
   const simulateInviteAcceptance = () => {
     const mockUsers = [
       { name: "Alex Carter", email: "alex.c@design.co", role: "Editor" },
-      { name: "David Kim", email: "dkim@structurals.net", role: "Editor" }
+      { name: "David Kim", email: "dkim@structurals.net", role: "Editor" },
     ];
     setTimeout(() => {
-      const randomUser = mockUsers[Math.floor(Math.random() * mockUsers.length)];
-      setTeamMembers(prev => [...prev, {
-        id: Date.now().toString(), name: randomUser.name, email: randomUser.email, role: randomUser.role, joinedAt: new Date().toLocaleString(), status: "Online"
-      }]);
+      const randomUser =
+        mockUsers[Math.floor(Math.random() * mockUsers.length)];
+      setTeamMembers((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          name: randomUser.name,
+          email: randomUser.email,
+          role: randomUser.role,
+          joinedAt: new Date().toLocaleString(),
+          status: "Online",
+        },
+      ]);
       showNotify(`${randomUser.name} joined the workspace!`, "success");
-    }, 3500); 
+    }, 3500);
   };
 
   const handleSaveAnnotation = () => {
     if (!errorText.trim()) return;
-    setAllAnnotations([...allAnnotations, {
-      id: Date.now().toString(), position: pendingAnnotation?.pos || [0,0,0], text: errorText, user: "You", resolved: false
-    }]);
+    setAllAnnotations([
+      ...allAnnotations,
+      {
+        id: Date.now().toString(),
+        position: pendingAnnotation?.pos || [0, 0, 0],
+        text: errorText,
+        user: "You",
+        resolved: false,
+      },
+    ]);
     setIsErrorModalOpen(false);
     setErrorText("");
     setPendingAnnotation(null);
@@ -169,7 +284,7 @@ export default function ProfessionalCADApp() {
   return (
     <div className="app-container">
       <style>{CSS}</style>
-      
+
       {notification && (
         <div className={`notification-toast ${notification.type}`}>
           <div className="toast-content">{notification.message}</div>
@@ -181,37 +296,63 @@ export default function ProfessionalCADApp() {
           <div className="error-input-modal">
             <div className="modal-header">
               <h3>Flag Model Error</h3>
-              <X className="close-icon" onClick={() => setIsErrorModalOpen(false)} size={16} />
+              <X
+                className="close-icon"
+                onClick={() => setIsErrorModalOpen(false)}
+                size={16}
+              />
             </div>
             <div className="modal-body">
               <label>Describe the issue in detail:</label>
-              <textarea autoFocus placeholder="e.g. Clearance between bracket and housing is too tight..." value={errorText} onChange={(e) => setErrorText(e.target.value)} />
+              <textarea
+                autoFocus
+                placeholder="e.g. Clearance between bracket and housing is too tight..."
+                value={errorText}
+                onChange={(e) => setErrorText(e.target.value)}
+              />
             </div>
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setIsErrorModalOpen(false)}>Cancel</button>
-              <button className="btn-primary" onClick={handleSaveAnnotation} disabled={!errorText.trim()}>Save Pin</button>
+              <button
+                className="btn-secondary"
+                onClick={() => setIsErrorModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                onClick={handleSaveAnnotation}
+                disabled={!errorText.trim()}
+              >
+                Save Pin
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {currentView === "HUB" ? (
-        <ProjectHub 
-          projects={projects} 
+        <ProjectHub
+          projects={projects}
           teamMembers={teamMembers}
-          onOpenProject={(p: Project) => { setSelectedProject(p); setCurrentView("WORKBENCH"); }} 
+          onOpenProject={(p: Project) => {
+            setSelectedProject(p);
+            setCurrentView("WORKBENCH");
+          }}
           onImportClick={() => setIsImportModalOpen(true)}
-          onInviteSent={() => { showNotify(`Invite link generated and copied!`, 'info'); simulateInviteAcceptance(); }}
+          onInviteSent={() => {
+            showNotify(`Invite link generated and copied!`, "info");
+            simulateInviteAcceptance();
+          }}
         />
       ) : (
-        <Workbench 
-          project={selectedProject!} 
-          onBack={() => setCurrentView("HUB")} 
+        <Workbench
+          project={selectedProject!}
+          onBack={() => setCurrentView("HUB")}
           notify={showNotify}
           annotations={allAnnotations}
           setAnnotations={setAllAnnotations}
           openErrorModal={(pos: [number, number, number]) => {
-            setPendingAnnotation({pos, project: selectedProject});
+            setPendingAnnotation({ pos, project: selectedProject });
             setIsErrorModalOpen(true);
           }}
           onInviteSent={simulateInviteAcceptance}
@@ -220,26 +361,57 @@ export default function ProfessionalCADApp() {
         />
       )}
 
-      {isImportModalOpen && <ImportModal onClose={() => setIsImportModalOpen(false)} onConfirm={handleImport} />}
+      {isImportModalOpen && (
+        <ImportModal
+          onClose={() => setIsImportModalOpen(false)}
+          onConfirm={handleImport}
+        />
+      )}
     </div>
   );
 }
 
 /* ============================== Project Hub ============================== */
 
-function ProjectHub({ projects, teamMembers, onOpenProject, onImportClick, onInviteSent }: any) {
+function ProjectHub({
+  projects,
+  teamMembers,
+  onOpenProject,
+  onImportClick,
+  onInviteSent,
+}: any) {
   const [activeTab, setActiveTab] = useState<HubTab>("projects");
 
   return (
     <div className="hub-view">
       <nav className="hub-nav">
-        <div className="logo"><Box className="logo-icon" size={20} /><span>Workbench</span></div>
-        <div className="nav-links">
-          <div className={`nav-item ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}><LayoutGrid size={16}/> Projects</div>
-          <div className={`nav-item ${activeTab === 'team' ? 'active' : ''}`} onClick={() => setActiveTab('team')}><Users size={16}/> Team</div>
-          <div className={`nav-item ${activeTab === 'account' ? 'active' : ''}`} onClick={() => setActiveTab('account')}><Settings size={16}/> Account</div>
+        <div className="logo">
+          <Box className="logo-icon" size={20} />
+          <span>Workbench</span>
         </div>
-        <div className="user-profile"><div className="avatar">ME</div></div>
+        <div className="nav-links">
+          <div
+            className={`nav-item ${activeTab === "projects" ? "active" : ""}`}
+            onClick={() => setActiveTab("projects")}
+          >
+            <LayoutGrid size={16} /> Projects
+          </div>
+          <div
+            className={`nav-item ${activeTab === "team" ? "active" : ""}`}
+            onClick={() => setActiveTab("team")}
+          >
+            <Users size={16} /> Team
+          </div>
+          <div
+            className={`nav-item ${activeTab === "account" ? "active" : ""}`}
+            onClick={() => setActiveTab("account")}
+          >
+            <Settings size={16} /> Account
+          </div>
+        </div>
+        <div className="user-profile">
+          <div className="avatar">ME</div>
+        </div>
       </nav>
 
       <main className="hub-content">
@@ -248,26 +420,48 @@ function ProjectHub({ projects, teamMembers, onOpenProject, onImportClick, onInv
             <header className="hub-header">
               <div>
                 <h1>Design Workspace</h1>
-                <p>Collaborate on high-precision CAD assemblies in real-time.</p>
+                <p>
+                  Collaborate on high-precision CAD assemblies in real-time.
+                </p>
               </div>
-              <button className="btn-primary" onClick={onImportClick}><Plus size={16} /> Start New Project</button>
+              <button className="btn-primary" onClick={onImportClick}>
+                <Plus size={16} /> Start New Project
+              </button>
             </header>
-            
+
             {projects.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-icon"><Upload size={56} strokeWidth={1} /></div>
+                <div className="empty-icon">
+                  <Upload size={56} strokeWidth={1} />
+                </div>
                 <h2>No projects found</h2>
-                <p>You haven't uploaded any models yet. Start a new assembly to begin collaborating.</p>
-                <button className="btn-primary" onClick={onImportClick} style={{ padding: "10px 24px", fontSize: "14px" }}>
+                <p>
+                  You haven't uploaded any models yet. Start a new assembly to
+                  begin collaborating.
+                </p>
+                <button
+                  className="btn-primary"
+                  onClick={onImportClick}
+                  style={{ padding: "10px 24px", fontSize: "14px" }}
+                >
                   Import CAD Model
                 </button>
               </div>
             ) : (
               <div className="project-grid">
                 {projects.map((p: any) => (
-                  <div key={p.id} className="project-card" onClick={() => onOpenProject(p)}>
-                    <div className="card-thumb"><div className="thumb-label">{p.fileType}</div></div>
-                    <div className="card-info"><h3>{p.name}</h3><p>Created {p.date}</p></div>
+                  <div
+                    key={p.id}
+                    className="project-card"
+                    onClick={() => onOpenProject(p)}
+                  >
+                    <div className="card-thumb">
+                      <div className="thumb-label">{p.fileType}</div>
+                    </div>
+                    <div className="card-info">
+                      <h3>{p.name}</h3>
+                      <p>Created {p.date}</p>
+                    </div>
                     <ChevronRight className="card-arrow" size={16} />
                   </div>
                 ))}
@@ -279,20 +473,63 @@ function ProjectHub({ projects, teamMembers, onOpenProject, onImportClick, onInv
         {activeTab === "team" && (
           <div className="tab-section">
             <header className="hub-header">
-              <div><h1>Team Management</h1><p>Manage access, roles, and active collaborators.</p></div>
-              <button className="btn-primary" onClick={onInviteSent}><Share2 size={16} /> Generate Invite Link</button>
+              <div>
+                <h1>Team Management</h1>
+                <p>Manage access, roles, and active collaborators.</p>
+              </div>
+              <button className="btn-primary" onClick={onInviteSent}>
+                <Share2 size={16} /> Generate Invite Link
+              </button>
             </header>
             <div className="team-table-container">
               <table className="team-table">
-                <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Joined</th><th>Status</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Joined</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {teamMembers.map((member: TeamMember) => (
                     <tr key={member.id}>
-                      <td className="user-cell"><div className="avatar small">{member.name.charAt(0)}</div><span style={{color: '#fff'}}>{member.name}</span></td>
-                      <td className="dim-text"><Mail size={14} style={{display:'inline', marginRight: 6}}/>{member.email}</td>
-                      <td><span className={`role-badge ${member.role.toLowerCase()}`}>{member.role}</span></td>
-                      <td className="dim-text"><Clock size={14} style={{display:'inline', marginRight: 6}}/>{member.joinedAt}</td>
-                      <td><span className="status-indicator"><span className={`dot ${member.status.toLowerCase()}`}></span> {member.status}</span></td>
+                      <td className="user-cell">
+                        <div className="avatar small">
+                          {member.name.charAt(0)}
+                        </div>
+                        <span style={{ color: "#fff" }}>{member.name}</span>
+                      </td>
+                      <td className="dim-text">
+                        <Mail
+                          size={14}
+                          style={{ display: "inline", marginRight: 6 }}
+                        />
+                        {member.email}
+                      </td>
+                      <td>
+                        <span
+                          className={`role-badge ${member.role.toLowerCase()}`}
+                        >
+                          {member.role}
+                        </span>
+                      </td>
+                      <td className="dim-text">
+                        <Clock
+                          size={14}
+                          style={{ display: "inline", marginRight: 6 }}
+                        />
+                        {member.joinedAt}
+                      </td>
+                      <td>
+                        <span className="status-indicator">
+                          <span
+                            className={`dot ${member.status.toLowerCase()}`}
+                          ></span>{" "}
+                          {member.status}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -307,11 +544,11 @@ function ProjectHub({ projects, teamMembers, onOpenProject, onImportClick, onInv
               <h1>Account Settings</h1>
               <p>Manage your login details and workspace preferences.</p>
             </header>
-            
+
             <div className="account-layout">
               <div className="account-card-new">
                 <div className="account-card-header">
-                  <User size={20} color="rgba(64,232,244,1)"/> 
+                  <User size={20} color="rgba(64,232,244,1)" />
                   <h3>Profile Details</h3>
                 </div>
                 <div className="account-card-body">
@@ -328,7 +565,7 @@ function ProjectHub({ projects, teamMembers, onOpenProject, onImportClick, onInv
 
               <div className="account-card-new">
                 <div className="account-card-header">
-                  <HardDrive size={20} color="rgba(64,232,244,1)"/> 
+                  <HardDrive size={20} color="rgba(64,232,244,1)" />
                   <h3>Storage Usage</h3>
                 </div>
                 <div className="account-card-body">
@@ -337,9 +574,15 @@ function ProjectHub({ projects, teamMembers, onOpenProject, onImportClick, onInv
                     <span className="storage-total">10 GB total</span>
                   </div>
                   <div className="storage-bar-bg">
-                    <div className="storage-bar-fill" style={{width: '12%'}}></div>
+                    <div
+                      className="storage-bar-fill"
+                      style={{ width: "12%" }}
+                    ></div>
                   </div>
-                  <p className="storage-desc-new">You have plenty of space left for new high-precision CAD assemblies and reports.</p>
+                  <p className="storage-desc-new">
+                    You have plenty of space left for new high-precision CAD
+                    assemblies and reports.
+                  </p>
                 </div>
               </div>
             </div>
@@ -353,38 +596,57 @@ function ProjectHub({ projects, teamMembers, onOpenProject, onImportClick, onInv
 /* ============================== Import Modal ============================== */
 
 function ImportModal({ onClose, onConfirm }: any) {
-  const [file, setFile] = useState("");
-  
+  const [projectName, setProjectName] = useState("");
+  const [description, setDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const submit = async () => {
+    if (!projectName.trim() || creating) return;
+    setCreating(true);
+    try {
+      await onConfirm(projectName, description);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="modal-overlay-blur">
       <div className="modal-card">
         <div className="modal-header">
-          <h3>Import CAD Model</h3>
+          <h3>Create Project</h3>
           <X className="close-icon" onClick={onClose} size={16} />
         </div>
         <div className="modal-body">
-          <div className="upload-zone">
-            <FileUp size={42} strokeWidth={1.5} color="var(--text-dim)" />
-            <p style={{margin: '5px 0 0 0', color: 'var(--text-main)'}}>Drag and drop your file</p>
-            <span style={{fontSize: '11px', color: 'var(--text-dim)'}}>Supports .STEP, .IGES, .STL</span>
-            
-            <input 
-              type="file" 
-              onChange={(e) => setFile(e.target.files?.[0]?.name || "")} 
-              title="Click to browse files"
-            />
-            
-            {file && (
-              <div className="file-selected">
-                <FileUp size={14} /> {file}
-              </div>
-            )}
-          </div>
+          <label>Project Name</label>
+          <input
+            className="project-input"
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            placeholder="e.g. Automotive Assembly"
+            autoFocus
+          />
+          <label>Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Describe the CAD project..."
+          />
+          <p className="project-hint">
+            Create the project first. You can upload the 3D model from the
+            Workbench.
+          </p>
         </div>
         <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" disabled={!file} onClick={() => onConfirm(file, "STEP")}>
-            Initialize Project
+          <button className="btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn-primary"
+            disabled={!projectName.trim() || creating}
+            onClick={submit}
+          >
+            {creating ? "Creating..." : "Create Project"}
           </button>
         </div>
       </div>
@@ -394,10 +656,29 @@ function ImportModal({ onClose, onConfirm }: any) {
 
 /* ============================== Workbench ============================== */
 
-function Workbench({ project, onBack, notify, annotations, setAnnotations, openErrorModal, onInviteSent, modelProps, setModelProps }: any) {
+function Workbench({
+  project,
+  onBack,
+  notify,
+  annotations,
+  setAnnotations,
+  onInviteSent,
+  modelProps,
+  setModelProps,
+}: any) {
   const [activeTool, setActiveTool] = useState("select");
   const [activeRibbonTab, setActiveRibbonTab] = useState("HOME");
-  const [messages, setMessages] = useState<ChatMsg[]>([{ id: '1', user: 'System', text: 'Live Session Started', time: 'Just now' }]);
+  const [viewerCommand, setViewerCommand] = useState<{
+    id: number;
+    type: string;
+  }>({ id: 0, type: "" });
+
+  const sendViewerCommand = (type: string) => {
+    setViewerCommand({ id: Date.now(), type });
+  };
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    { id: "1", user: "System", text: "Live Session Started", time: "Just now" },
+  ]);
   const [activeTab, setActiveTab] = useState<"chat" | "issues">("chat");
 
   const triggerExport = () => {
@@ -405,16 +686,26 @@ function Workbench({ project, onBack, notify, annotations, setAnnotations, openE
   };
 
   const ribbonTabs = [
-    "HOME", "PROJECT", "SCHEMATIC", "PANEL", "REPORTS", 
-    "IMPORT/EXPORT DATA", "ELECTROMECHANICAL", "CONVERSION TOOLS", 
-    "ADD-INS", "COLLABORATE", "FEATURED APPS"
+    "HOME",
+    "PROJECT",
+    "SCHEMATIC",
+    "PANEL",
+    "REPORTS",
+    "IMPORT/EXPORT DATA",
+    "ELECTROMECHANICAL",
+    "CONVERSION TOOLS",
+    "ADD-INS",
+    "COLLABORATE",
+    "FEATURED APPS",
   ];
 
   return (
     <div className="workbench-view">
       <header className="wb-topbar">
         <div className="topbar-left">
-          <div className="menu-icon" onClick={onBack} title="Return to Hub"><Box size={16} /></div>
+          <div className="menu-icon" onClick={onBack} title="Return to Hub">
+            <Box size={16} />
+          </div>
           <span className="menu-item">File</span>
           <span className="menu-item">Edit</span>
           <span className="menu-item">Render</span>
@@ -426,11 +717,17 @@ function Workbench({ project, onBack, notify, annotations, setAnnotations, openE
 
       <div className="autocad-ribbon">
         <div className="ribbon-tabs">
-          {ribbonTabs.map(tab => (
-            <div key={tab} className={`ribbon-tab ${activeRibbonTab === tab ? 'active' : ''}`} onClick={() => setActiveRibbonTab(tab)}>{tab}</div>
+          {ribbonTabs.map((tab) => (
+            <div
+              key={tab}
+              className={`ribbon-tab ${activeRibbonTab === tab ? "active" : ""}`}
+              onClick={() => setActiveRibbonTab(tab)}
+            >
+              {tab}
+            </div>
           ))}
         </div>
-        
+
         <div className="ribbon-toolbar">
           <div className="ribbon-toolbar-group">
             <span className="header-label">Mode</span>
@@ -440,93 +737,327 @@ function Workbench({ project, onBack, notify, annotations, setAnnotations, openE
 
           {activeRibbonTab === "HOME" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn"><Minus size={14}/><span>Line</span></button><button className="ribbon-btn"><Activity size={14}/><span>Polyline</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() => sendViewerCommand("upload")}
+                >
+                  <Upload size={14} />
+                  <span>Upload Model</span>
+                </button>
+                <button
+                  className="ribbon-btn"
+                  onClick={() => sendViewerCommand("primitive")}
+                >
+                  <Plus size={14} />
+                  <span>Primitive</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className="ribbon-btn"><Move size={14}/><span>Move</span></button><button className="ribbon-btn"><RotateCw size={14}/><span>Rotate</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() => sendViewerCommand("move")}
+                >
+                  <Move size={14} />
+                  <span>Move</span>
+                </button>
+                <button
+                  className="ribbon-btn"
+                  onClick={() => sendViewerCommand("rotate")}
+                >
+                  <RotateCw size={14} />
+                  <span>Rotate</span>
+                </button>
+                <button
+                  className="ribbon-btn"
+                  onClick={() => sendViewerCommand("scale")}
+                >
+                  <Maximize size={14} />
+                  <span>Scale</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className="ribbon-btn"><Type size={14}/><span>Text</span></button><button className="ribbon-btn"><Ruler size={14}/><span>Dimension</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() => sendViewerCommand("undo")}
+                >
+                  <Undo2 size={14} />
+                  <span>Undo</span>
+                </button>
+                <button
+                  className="ribbon-btn"
+                  onClick={() => sendViewerCommand("redo")}
+                >
+                  <Redo2 size={14} />
+                  <span>Redo</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className="ribbon-btn"><Layers size={14}/><span>Layers</span></button></div>
-              <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className={`ribbon-btn ${activeTool === 'pin' ? 'active' : ''}`} onClick={() => setActiveTool('pin')}><Pin size={14}/><span>Pin Error</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className={`ribbon-btn ${activeTool === "pin" ? "active" : ""}`}
+                  onClick={() => setActiveTool("pin")}
+                >
+                  <Pin size={14} />
+                  <span>Annotation</span>
+                </button>
+                <button
+                  className="ribbon-btn"
+                  onClick={() =>
+                    notify("Select a model point to add a dimension.", "info")
+                  }
+                >
+                  <Ruler size={14} />
+                  <span>Dimension</span>
+                </button>
+              </div>
             </div>
           )}
 
           {activeRibbonTab === "PROJECT" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={() => notify("Project Manager Opened", "info")}><Folder size={14}/><span>Manager</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() => notify("Project Manager Opened", "info")}
+                >
+                  <Folder size={14} />
+                  <span>Manager</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={() => { setModelProps({...modelProps, extraParts: modelProps.extraParts + 1}); notify("New Component Added", "success"); }}><FolderPlus size={14}/><span>New Part</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() => {
+                    setModelProps({
+                      ...modelProps,
+                      extraParts: modelProps.extraParts + 1,
+                    });
+                    notify("New Component Added", "success");
+                  }}
+                >
+                  <FolderPlus size={14} />
+                  <span>New Part</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={() => notify("Project Refreshed")}><RefreshCw size={14}/><span>Update</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() => notify("Project Refreshed")}
+                >
+                  <RefreshCw size={14} />
+                  <span>Update</span>
+                </button>
+              </div>
             </div>
           )}
 
           {activeRibbonTab === "SCHEMATIC" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn"><Cpu size={14}/><span>Insert Comp</span></button></div>
+              <div className="ribbon-col">
+                <button className="ribbon-btn">
+                  <Cpu size={14} />
+                  <span>Insert Comp</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className={`ribbon-btn ${modelProps.wireframe ? 'active' : ''}`} onClick={() => setModelProps({...modelProps, wireframe: !modelProps.wireframe})}><Zap size={14}/><span>Wireframe</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className={`ribbon-btn ${modelProps.wireframe ? "active" : ""}`}
+                  onClick={() =>
+                    setModelProps({
+                      ...modelProps,
+                      wireframe: !modelProps.wireframe,
+                    })
+                  }
+                >
+                  <Zap size={14} />
+                  <span>Wireframe</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className="ribbon-btn"><Scissors size={14}/><span>Trim Wire</span></button></div>
+              <div className="ribbon-col">
+                <button className="ribbon-btn">
+                  <Scissors size={14} />
+                  <span>Trim Wire</span>
+                </button>
+              </div>
             </div>
           )}
 
           {activeRibbonTab === "PANEL" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn"><BoxSelect size={14}/><span>Terminal</span></button></div>
+              <div className="ribbon-col">
+                <button className="ribbon-btn">
+                  <BoxSelect size={14} />
+                  <span>Terminal</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={() => setModelProps({...modelProps, color: modelProps.color === 0x808080 ? 0x2A5B75 : 0x808080})}><Monitor size={14}/><span>Set Color</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() =>
+                    setModelProps({
+                      ...modelProps,
+                      color:
+                        modelProps.color === 0x808080 ? 0x2a5b75 : 0x808080,
+                    })
+                  }
+                >
+                  <Monitor size={14} />
+                  <span>Set Color</span>
+                </button>
+              </div>
             </div>
           )}
 
           {activeRibbonTab === "REPORTS" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={() => notify("BOM Report Generated successfully!", "success")}><FileSpreadsheet size={14}/><span>BOM</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() =>
+                    notify("BOM Report Generated successfully!", "success")
+                  }
+                >
+                  <FileSpreadsheet size={14} />
+                  <span>BOM</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={() => notify("0 Missing Components found.", "info")}><AlertTriangle size={14}/><span>Missing</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() => notify("0 Missing Components found.", "info")}
+                >
+                  <AlertTriangle size={14} />
+                  <span>Missing</span>
+                </button>
+              </div>
             </div>
           )}
 
           {activeRibbonTab === "IMPORT/EXPORT DATA" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={triggerExport}><FileDown size={14}/><span>Export STEP</span></button><button className="ribbon-btn" onClick={() => notify("Exporting to Excel...")}><Table size={14}/><span>To Excel</span></button></div>
+              <div className="ribbon-col">
+                <button className="ribbon-btn" onClick={triggerExport}>
+                  <FileDown size={14} />
+                  <span>Export STEP</span>
+                </button>
+                <button
+                  className="ribbon-btn"
+                  onClick={() => notify("Exporting to Excel...")}
+                >
+                  <Table size={14} />
+                  <span>To Excel</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className="ribbon-btn"><FileUp size={14}/><span>Import Data</span></button></div>
+              <div className="ribbon-col">
+                <button className="ribbon-btn">
+                  <FileUp size={14} />
+                  <span>Import Data</span>
+                </button>
+              </div>
             </div>
           )}
 
           {activeRibbonTab === "ELECTROMECHANICAL" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={() => notify("Syncing with Autodesk Inventor...", "info")}><Link size={14}/><span>Sync Setup</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() =>
+                    notify("Syncing with Autodesk Inventor...", "info")
+                  }
+                >
+                  <Link size={14} />
+                  <span>Sync Setup</span>
+                </button>
+              </div>
             </div>
           )}
 
           {activeRibbonTab === "CONVERSION TOOLS" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn"><Package size={14}/><span>To Block</span></button></div>
+              <div className="ribbon-col">
+                <button className="ribbon-btn">
+                  <Package size={14} />
+                  <span>To Block</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className={`ribbon-btn ${modelProps.scale > 1 ? 'active' : ''}`} onClick={() => setModelProps({...modelProps, scale: modelProps.scale === 1 ? 1.5 : 1})}><Maximize size={14}/><span>Scale 1.5x</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className={`ribbon-btn ${modelProps.scale > 1 ? "active" : ""}`}
+                  onClick={() =>
+                    setModelProps({
+                      ...modelProps,
+                      scale: modelProps.scale === 1 ? 1.5 : 1,
+                    })
+                  }
+                >
+                  <Maximize size={14} />
+                  <span>Scale 1.5x</span>
+                </button>
+              </div>
             </div>
           )}
 
           {activeRibbonTab === "ADD-INS" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={() => notify("Opening Plugin Manager")}><Puzzle size={14}/><span>Manage Plugins</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() => notify("Opening Plugin Manager")}
+                >
+                  <Puzzle size={14} />
+                  <span>Manage Plugins</span>
+                </button>
+              </div>
             </div>
           )}
 
           {activeRibbonTab === "COLLABORATE" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={() => { notify("Invite link generated!", "success"); onInviteSent(); }}><Share2 size={14}/><span>Share View</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() => {
+                    notify("Invite link generated!", "success");
+                    onInviteSent();
+                  }}
+                >
+                  <Share2 size={14} />
+                  <span>Share View</span>
+                </button>
+              </div>
               <div className="ribbon-divider" />
-              <div className="ribbon-col"><button className="ribbon-btn" onClick={() => setActiveTab("chat")}><MessageCircle size={14}/><span>Open Chat</span></button></div>
+              <div className="ribbon-col">
+                <button
+                  className="ribbon-btn"
+                  onClick={() => setActiveTab("chat")}
+                >
+                  <MessageCircle size={14} />
+                  <span>Open Chat</span>
+                </button>
+              </div>
             </div>
           )}
 
           {activeRibbonTab === "FEATURED APPS" && (
             <div className="ribbon-panel-group">
-              <div className="ribbon-col"><button className="ribbon-btn"><Store size={14}/><span>App Store</span></button></div>
+              <div className="ribbon-col">
+                <button className="ribbon-btn">
+                  <Store size={14} />
+                  <span>App Store</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -534,13 +1065,44 @@ function Workbench({ project, onBack, notify, annotations, setAnnotations, openE
 
       <div className="wb-main">
         <div className="viewport-container">
-          <Viewport activeTool={activeTool} modelProps={modelProps} onAddAnnotation={(pos: [number, number, number]) => openErrorModal(pos)} />
+          <ThreeDViewer
+            projectId={project.id}
+            viewerCommand={viewerCommand}
+            onAnnotationsChange={(items: any[]) => {
+              setAnnotations(
+                items.map((item) => ({
+                  id: String(item.id ?? item.annotation_id),
+                  position: item.position ?? [
+                    item.x ?? 0,
+                    item.y ?? 0,
+                    item.z ?? 0,
+                  ],
+                  text: item.comment ?? item.title ?? "Untitled annotation",
+                  user: item.creator ?? item.user ?? "You",
+                  resolved:
+                    item.status === "Resolved" ||
+                    item.status === "FIXED" ||
+                    item.status === "CLOSED",
+                })),
+              );
+            }}
+          />
         </div>
 
         <aside className="collab-panel">
           <div className="panel-tabs">
-            <button className={`tab ${activeTab === "chat" ? "active" : ""}`} onClick={() => setActiveTab("chat")}>Team Chat</button>
-            <button className={`tab ${activeTab === "issues" ? "active" : ""}`} onClick={() => setActiveTab("issues")}>Issue Log</button>
+            <button
+              className={`tab ${activeTab === "chat" ? "active" : ""}`}
+              onClick={() => setActiveTab("chat")}
+            >
+              Team Chat
+            </button>
+            <button
+              className={`tab ${activeTab === "issues" ? "active" : ""}`}
+              onClick={() => setActiveTab("issues")}
+            >
+              Issue Log
+            </button>
           </div>
           <div className="panel-content">
             {activeTab === "chat" ? (
@@ -548,12 +1110,30 @@ function Workbench({ project, onBack, notify, annotations, setAnnotations, openE
             ) : (
               <div className="issue-log">
                 <div className="outliner-header">Pinned Errors</div>
-                {annotations.length === 0 && <p className="empty-msg">No errors flagged.</p>}
+                {annotations.length === 0 && (
+                  <p className="empty-msg">No errors flagged.</p>
+                )}
                 {annotations.map((a: Annotation) => (
                   <div key={a.id} className="issue-card">
-                    <div className="issue-user"><strong>{a.user}</strong></div>
+                    <div className="issue-user">
+                      <strong>{a.user}</strong>
+                    </div>
                     <div className="issue-text">{a.text}</div>
-                    <button className="btn-resolve" onClick={() => setAnnotations(annotations.filter((ann: Annotation) => ann.id !== a.id))}>Mark Fixed</button>
+                    <button
+                      className="btn-resolve"
+                      onClick={() => {
+                        setAnnotations((current: Annotation[]) =>
+                          current.filter((ann: Annotation) => ann.id !== a.id),
+                        );
+
+                        setViewerCommand({
+                          type: "remove-annotation",
+                          id: Number(a.id),
+                        });
+                      }}
+                    >
+                      Mark Fixed
+                    </button>
                   </div>
                 ))}
               </div>
@@ -571,7 +1151,18 @@ function ChatPanel({ messages, setMessages }: any) {
   const [input, setInput] = useState("");
   const handleSend = () => {
     if (!input.trim()) return;
-    setMessages([...messages, { id: Date.now().toString(), user: "You", text: input, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+    setMessages([
+      ...messages,
+      {
+        id: Date.now().toString(),
+        user: "You",
+        text: input,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+    ]);
     setInput("");
   };
   return (
@@ -579,124 +1170,24 @@ function ChatPanel({ messages, setMessages }: any) {
       <div className="chat-msgs">
         {messages.map((m: ChatMsg) => (
           <div key={m.id} className="msg-user">
-            <div className="msg-header"><strong>{m.user}</strong> <span className="msg-time">{m.time}</span></div>
+            <div className="msg-header">
+              <strong>{m.user}</strong>{" "}
+              <span className="msg-time">{m.time}</span>
+            </div>
             <div className="msg-body">{m.text}</div>
           </div>
         ))}
       </div>
       <div className="chat-input">
-        <input placeholder="Message team..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()} />
-        <button onClick={handleSend}><Send size={14}/></button>
-      </div>
-    </div>
-  );
-}
-
-/* ============================== 3D Viewport ============================== */
-
-function Viewport({ activeTool, modelProps, onAddAnnotation }: any) {
-  const mountRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const groupRef = useRef<THREE.Group | null>(null);
-  const matRef = useRef<THREE.MeshStandardMaterial | null>(null);
-  const edgesRef = useRef<THREE.LineSegments | null>(null);
-
-  useEffect(() => {
-    if (!mountRef.current) return;
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x282828); // Blender Viewport BG
-
-    const camera = new THREE.PerspectiveCamera(45, mountRef.current.clientWidth / mountRef.current.clientHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
-    mountRef.current.appendChild(renderer.domElement);
-
-    const group = new THREE.Group();
-    
-    // Create the Blender Default Cube
-    const geometry = new THREE.BoxGeometry(2, 2, 2);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x808080, metalness: 0.1, roughness: 0.8 });
-    const body = new THREE.Mesh(geometry, mat);
-    
-    // Add Blender's Orange Selection Outline
-    const edgesGeo = new THREE.EdgesGeometry(geometry);
-    const edges = new THREE.LineSegments(edgesGeo, new THREE.LineBasicMaterial({ color: 0xFF7700, linewidth: 2 }));
-    body.add(edges);
-
-    group.add(body);
-    scene.add(group);
-    
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const light = new THREE.DirectionalLight(0xffffff, 0.8);
-    light.position.set(5, 10, 7);
-    scene.add(light);
-    
-    // Blender-like Grid
-    const grid = new THREE.GridHelper(40, 40, 0x555555, 0x3A3A3A);
-    scene.add(grid);
-    
-    camera.position.set(6, 5, 8);
-    camera.lookAt(0, 0, 0);
-
-    matRef.current = mat;
-    groupRef.current = group;
-    sceneRef.current = scene;
-    edgesRef.current = edges;
-
-    const animate = () => {
-      requestAnimationFrame(animate);
-      if (groupRef.current) groupRef.current.rotation.y += 0.002;
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    const handleMouseDown = () => { if (activeTool === "pin") onAddAnnotation([0,0,0]); };
-    renderer.domElement.addEventListener("mousedown", handleMouseDown);
-    
-    const handleResize = () => {
-        if (!mountRef.current) return;
-        camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
-    };
-    window.addEventListener('resize', handleResize);
-
-    return () => { 
-        window.removeEventListener('resize', handleResize);
-        renderer.dispose(); 
-        renderer.domElement.remove(); 
-    };
-  }, [activeTool, onAddAnnotation]); 
-
-  useEffect(() => {
-    if (matRef.current) {
-      matRef.current.wireframe = modelProps.wireframe;
-      matRef.current.color.setHex(modelProps.color);
-    }
-    if (edgesRef.current) {
-      edgesRef.current.visible = !modelProps.wireframe; 
-    }
-    if (groupRef.current) {
-      const s = modelProps.scale;
-      groupRef.current.scale.set(s, s, s);
-      
-      if (modelProps.extraParts > groupRef.current.children.length - 1) {
-        const extraMat = new THREE.MeshStandardMaterial({ color: 0x4772B3, metalness: 0.2 });
-        const box = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), extraMat);
-        box.position.set((Math.random()*4)-2, (Math.random()*2), (Math.random()*4)-2);
-        
-        const extraEdges = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), new THREE.LineBasicMaterial({ color: 0xFF7700 }));
-        box.add(extraEdges);
-
-        groupRef.current.add(box);
-      }
-    }
-  }, [modelProps]);
-
-  return (
-    <div className="viewport-wrapper" ref={mountRef}>
-      <div className="viewport-ui">
-        <div className="coord-box">User Perspective<br/>(1) Collection | Cube</div>
+        <input
+          placeholder="Message team..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+        />
+        <button onClick={handleSend}>
+          <Send size={14} />
+        </button>
       </div>
     </div>
   );
@@ -754,6 +1245,9 @@ const CSS = `
 .modal-body label { font-size: 12px; color: var(--text-dim); }
 .modal-body textarea { background: var(--bg-dark); border: 1px solid var(--border-light); border-radius: 4px; padding: 12px; color: white; font-family: inherit; font-size: 13px; resize: none; height: 100px; outline: none; }
 .modal-body textarea:focus { border-color: var(--accent); }
+.modal-body input.project-input { background: var(--bg-dark); border: 1px solid var(--border-light); border-radius: 4px; padding: 10px 12px; color: white; font-family: inherit; font-size: 13px; outline: none; }
+.modal-body input.project-input:focus { border-color: var(--accent); }
+.project-hint { margin: 4px 0 0; color: var(--text-dim); font-size: 11px; line-height: 1.4; }
 .modal-footer { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-raise); }
 
 /* UPLOAD ZONE IMPROVEMENTS */
