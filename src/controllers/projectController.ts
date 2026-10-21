@@ -1,5 +1,17 @@
 import { Request, Response } from "express";
+<<<<<<< HEAD
 import { createProject,getProjects,getProjectById,addProjectMember,getProjectMemberRole,deleteProject } from "../services/projectService";
+=======
+import {
+  createProject,
+  getProjects,
+  getProjectById,
+  addProjectMember,
+  getProjectMemberRole,
+  addProjectCollaborator,
+  getProjectCollaborators,
+} from "../services/projectService";
+>>>>>>> ec5588a (Updated backend with routes connection)
 import { AuthenticatedUser } from "../types/auth";
 
 export const createProjectController = async (
@@ -68,6 +80,7 @@ export const getProjectsController = async (
     });
   }
 };
+
 export const getProjectByIdController = async (
   req: Request,
   res: Response
@@ -111,12 +124,13 @@ export const getProjectByIdController = async (
     });
   }
 };
+
 export const addProjectMemberController = async (
   req: Request,
   res: Response
 ) => {
   try {
-   const user = (req as Request & { user: AuthenticatedUser }).user;
+    const user = (req as Request & { user: AuthenticatedUser }).user;
 
     if (!user || !user.user_id) {
       return res.status(401).json({
@@ -140,24 +154,24 @@ export const addProjectMemberController = async (
     }
 
     const currentUserRole = await getProjectMemberRole(
-  projectId,
-  user.user_id
-);
+      projectId,
+      user.user_id
+    );
 
-if (!currentUserRole) {
-  return res.status(403).json({
-    message: "You are not a member of this project"
-  });
-}
+    if (!currentUserRole) {
+      return res.status(403).json({
+        message: "You are not a member of this project"
+      });
+    }
 
-if (
-  currentUserRole !== "owner" &&
-  currentUserRole !== "editor"
-) {
-  return res.status(403).json({
-    message: "You do not have permission to add members"
-  });
-}
+    if (
+      currentUserRole !== "owner" &&
+      currentUserRole !== "editor"
+    ) {
+      return res.status(403).json({
+        message: "You do not have permission to add members"
+      });
+    }
 
     const member = await addProjectMember(
       projectId,
@@ -178,11 +192,16 @@ if (
   }
 };
 
+<<<<<<< HEAD
 export const deleteProjectController = async (
+=======
+export const addProjectCollaboratorController = async (
+>>>>>>> ec5588a (Updated backend with routes connection)
   req: Request,
   res: Response
 ) => {
   try {
+<<<<<<< HEAD
     const user = (req as Request & { user: AuthenticatedUser }).user;
 
     if (!user?.user_id) {
@@ -224,3 +243,45 @@ export const deleteProjectController = async (
     });
   }
 };
+=======
+    const projectId = Number(req.params.projectId);
+    const { email, role } = req.body;
+
+    if (Number.isNaN(projectId) || !email) {
+      return res.status(400).json({ message: "Valid project ID and email are required" });
+    }
+
+    const collaborator = await addProjectCollaborator(projectId, email, role || "editor");
+
+    return res.status(200).json({
+      message: "Collaborator granted access successfully",
+      collaborator,
+    });
+  } catch (error: any) {
+    console.error("Add collaborator error:", error);
+    return res.status(500).json({ message: error.message || "Internal server error" });
+  }
+};
+
+export const getProjectCollaboratorsController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const projectId = Number(req.params.projectId);
+
+    if (Number.isNaN(projectId)) {
+      return res.status(400).json({ message: "Invalid project ID" });
+    }
+
+    const collaborators = await getProjectCollaborators(projectId);
+
+    return res.status(200).json({
+      collaborators,
+    });
+  } catch (error: any) {
+    console.error("Get collaborators error:", error);
+    return res.status(500).json({ message: error.message || "Internal server error" });
+  }
+};
+>>>>>>> ec5588a (Updated backend with routes connection)

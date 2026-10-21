@@ -298,6 +298,16 @@ CREATE SEQUENCE public.users_user_id_seq
     CACHE 1;
 
 
+CREATE TABLE IF NOT EXISTS project_collaborators (
+    id SERIAL PRIMARY KEY,
+    project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_email VARCHAR(255) NOT NULL,
+    role VARCHAR(50) DEFAULT 'Editor',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(project_id, user_email)
+);
+
+
 --
 -- Name: users_user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --

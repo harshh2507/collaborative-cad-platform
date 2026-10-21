@@ -2,7 +2,6 @@ import { Router } from "express";
 import { authenticateToken } from "../middleware/authMiddleware";
 import upload from "../config/upload";
 import versionUpload from "../config/versionUpload";
-import multer from "multer";
 import { handleUploadError } from "../middleware/uploadMiddleware";
 
 import {
@@ -10,7 +9,12 @@ import {
   getProjectsController,
   getProjectByIdController,
   addProjectMemberController,
+<<<<<<< HEAD
    deleteProjectController
+=======
+  addProjectCollaboratorController,
+  getProjectCollaboratorsController,
+>>>>>>> ec5588a (Updated backend with routes connection)
 } from "../controllers/projectController";
 
 import {
@@ -23,9 +27,9 @@ import {
 } from "../controllers/modelVersionController";
 import {
   createAnnotationController,
-   getAnnotationsController,
-   updateAnnotationController,
-   deleteAnnotationController
+  getAnnotationsController,
+  updateAnnotationController,
+  deleteAnnotationController
 } from "../controllers/annotationController";
 import {
   createAnnotationCommentController,
@@ -50,6 +54,19 @@ router.get(
   "/",
   authenticateToken,
   getProjectsController
+);
+
+// Collaborator routes for sharing access by email
+router.post(
+  "/:projectId/collaborators",
+  authenticateToken,
+  addProjectCollaboratorController
+);
+
+router.get(
+  "/:projectId/collaborators",
+  authenticateToken,
+  getProjectCollaboratorsController
 );
 
 router.post(
