@@ -177,6 +177,7 @@ export const isUserProjectMember = async (
   return result.rows.length > 0;
 };
 
+<<<<<<< HEAD
 export const deleteProject = async (
   projectId: number,
   userId: number
@@ -264,6 +265,7 @@ export const deleteProject = async (
     client.release();
   }
 };
+=======
 export const addProjectCollaborator = async (
   projectId: string | number,
   email: string,
@@ -317,3 +319,4 @@ export const getProjectCollaborators = async (projectId: string | number) => {
   const result = await pool.query(query, [Number(projectId)]);
   return result.rows;
 };
+>>>>>>> ec5588a (Updated backend with routes connection)
