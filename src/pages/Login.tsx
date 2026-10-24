@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useSearchParams  } from "react-router-dom";
 import {
   Mail,
   Lock,
@@ -28,25 +28,6 @@ function Login() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Preserve invite parameters across login
-  useEffect(() => {
-    const projectId = searchParams.get("projectId");
-    if (projectId) {
-      sessionStorage.setItem(
-        "pending_cad_invite",
-        JSON.stringify({
-          projectId,
-          projectName: searchParams.get("projectName") || "",
-          inviter: searchParams.get("from") || "",
-          inviterEmail: searchParams.get("fromEmail") || "",
-          scope: searchParams.get("scope") || "restricted",
-          access: searchParams.get("access") || "editor",
-          authorizedEmail: searchParams.get("for") || "",
-        })
-      );
-    }
-  }, [searchParams]);
-
   const requirements = {
     length: password.length >= 8,
     uppercase: /[A-Z]/.test(password),
@@ -62,7 +43,9 @@ function Login() {
     requirements.number &&
     requirements.special;
 
+  // 3. Activated Google Login
   const handleGoogleLogin = () => {
+    // Uses your backend Google OAuth endpoint
     const backendUrl =
       import.meta.env.VITE_API_URL || "http://localhost:5000/api";
     window.location.href = `${backendUrl}/auth/google`;
@@ -70,6 +53,7 @@ function Login() {
 
   const handleAppleLogin = () => {
     console.log("Apple login clicked");
+    // Apple OAuth can be plugged in similarly
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,41 +75,14 @@ function Login() {
         password,
       });
 
-      setSuccess("Successfully logged in! Entering collaborative workspace...");
+      setSuccess("Successfully logged in! Redirecting to workspace...");
 
-      // Determine destination: redirect param, invite params, or dashboard
-      const redirectUrl = searchParams.get("redirect");
-      const projectId = searchParams.get("projectId");
-
-      let targetUrl = "/dashboard";
-
-      if (redirectUrl) {
-        targetUrl = redirectUrl;
-      } else if (projectId) {
-        targetUrl = `/invite${window.location.search}`;
-      } else {
-        const savedInvite = sessionStorage.getItem("pending_cad_invite");
-        if (savedInvite) {
-          try {
-            const data = JSON.parse(savedInvite);
-            if (data.projectId) {
-              targetUrl = `/invite?projectId=${data.projectId}&projectName=${encodeURIComponent(
-                data.projectName || ""
-              )}&from=${encodeURIComponent(
-                data.inviter || ""
-              )}&fromEmail=${encodeURIComponent(
-                data.inviterEmail || ""
-              )}&scope=${data.scope || "restricted"}&access=${
-                data.access || "editor"
-              }&for=${encodeURIComponent(data.authorizedEmail || "")}`;
-            }
-          } catch {}
-        }
-      }
+      // If they came from an invite link, redirect to that workspace; otherwise go to /dashboard
+      const redirectUrl = searchParams.get("redirect") || "/dashboard";
 
       setTimeout(() => {
-        navigate(targetUrl);
-      }, 1000);
+        navigate(redirectUrl);
+      }, 1500);
 
     } catch (err: any) {
       console.error("Login failed:", err);
@@ -137,16 +94,21 @@ function Login() {
 
   return (
     <div className="login-page">
+      {/* Background glow */}
       <div className="bg-glow glow-one"></div>
       <div className="bg-glow glow-two"></div>
 
       <div className="login-container">
+        {/* =================================================
+            LEFT SIDE
+        ================================================= */}
         <section className="project-visual">
           <div className="left-brand">
             <span className="logo-dot"></span>
             <span>3D ANNOTATE</span>
           </div>
 
+          {/* ABSTRACT VISUAL */}
           <div className="abstract-background">
             <svg
               className="wave-bg"
@@ -220,6 +182,7 @@ function Login() {
             <div className="orb orb-4"></div>
           </div>
 
+          {/* LEFT TEXT */}
           <div className="project-info">
             <h1>
               Visualize.
@@ -236,6 +199,7 @@ function Login() {
             </p>
           </div>
 
+          {/* Bottom status */}
           <div className="project-status">
             <span className="status-dot"></span>
             <span>3D WORKSPACE</span>
@@ -244,8 +208,12 @@ function Login() {
           </div>
         </section>
 
+        {/* =================================================
+            RIGHT LOGIN SIDE
+        ================================================= */}
         <section className="login-section">
           <div className="login-content">
+            {/* WELCOME */}
             <div className="login-heading">
               <p className="welcome-text">WELCOME BACK!!!</p>
               <h2>Sign in to your workspace</h2>
@@ -254,6 +222,7 @@ function Login() {
               </p>
             </div>
 
+            {/* STATUS NOTIFICATIONS */}
             {success && (
               <div
                 style={{
@@ -294,7 +263,9 @@ function Login() {
               </div>
             )}
 
+            {/* LOGIN FORM */}
             <form className="login-form" onSubmit={handleSubmit}>
+              {/* Email */}
               <div className="input-group">
                 <label htmlFor="email">Email address</label>
                 <div className="input-wrapper">
@@ -310,6 +281,7 @@ function Login() {
                 </div>
               </div>
 
+              {/* Password */}
               <div className="input-group password-group">
                 <label htmlFor="password">Password</label>
                 <div className="input-wrapper">
@@ -347,6 +319,7 @@ function Login() {
                   </button>
                 </div>
 
+                {/* Password popup */}
                 {showRequirements && password.length > 0 && !passwordValid && (
                   <div className="password-popup">
                     <div className="popup-title">Password requirements</div>
@@ -374,6 +347,7 @@ function Login() {
                 )}
               </div>
 
+              {/* Remember / Forgot */}
               <div className="login-options">
                 <label className="remember">
                   <input type="checkbox" />
@@ -384,6 +358,7 @@ function Login() {
                 </a>
               </div>
 
+              {/* Login button */}
               <button
                 type="submit"
                 className="login-button"
@@ -400,6 +375,7 @@ function Login() {
               </button>
             </form>
 
+            {/* SOCIAL LOGIN */}
             <div className="login-divider">
               <span></span>
               <p>OR CONTINUE WITH</p>
@@ -407,6 +383,7 @@ function Login() {
             </div>
 
             <div className="social-buttons">
+              {/* Google Button */}
               <button
                 type="button"
                 className="social-button"
@@ -438,6 +415,7 @@ function Login() {
                 </svg>
               </button>
 
+              {/* Apple */}
               <button
                 type="button"
                 className="social-button"
@@ -457,11 +435,13 @@ function Login() {
               </button>
             </div>
 
+            {/* CREATE ACCOUNT */}
             <div className="register-text">
               <span>Don't have an account?</span>
               <Link to="/register">Create account</Link>
             </div>
 
+            {/* FOOTER */}
             <div className="login-footer">
               <span>© 2026 3D Annotate</span>
               <div>
@@ -475,6 +455,10 @@ function Login() {
     </div>
   );
 }
+
+/* =========================================================
+   PASSWORD REQUIREMENT
+========================================================= */
 
 function PasswordRequirement({
   valid,
