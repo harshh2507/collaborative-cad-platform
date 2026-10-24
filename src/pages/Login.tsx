@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams  } from "react-router-dom";
 import {
   Mail,
   Lock,
@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Check,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -15,11 +16,16 @@ function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const [searchParams] = useSearchParams(); 
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showRequirements, setShowRequirements] = useState(false);
+  
+  // State for error, success, and loading
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const requirements = {
@@ -37,20 +43,24 @@ function Login() {
     requirements.number &&
     requirements.special;
 
+  // 3. Activated Google Login
   const handleGoogleLogin = () => {
-    console.log("Google login clicked");
-    // Google OAuth is not implemented yet.
+    // Uses your backend Google OAuth endpoint
+    const backendUrl =
+      import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    window.location.href = `${backendUrl}/auth/google`;
   };
 
   const handleAppleLogin = () => {
     console.log("Apple login clicked");
-    // Apple OAuth is not implemented yet.
+    // Apple OAuth can be plugged in similarly
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setError("");
+    setSuccess("");
 
     if (!passwordValid) {
       setShowRequirements(true);
@@ -61,20 +71,22 @@ function Login() {
       setLoading(true);
 
       await login({
-  email,
-  password,
-});
+        email,
+        password,
+      });
 
-console.log("Login successful");
-navigate("/dashboard");
-    } catch (err) {
+      setSuccess("Successfully logged in! Redirecting to workspace...");
+
+      // If they came from an invite link, redirect to that workspace; otherwise go to /dashboard
+      const redirectUrl = searchParams.get("redirect") || "/dashboard";
+
+      setTimeout(() => {
+        navigate(redirectUrl);
+      }, 1500);
+
+    } catch (err: any) {
       console.error("Login failed:", err);
-
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Login failed. Please check your email and password."
-      );
+      setError("Invalid credentials. Please check your email and password.");
     } finally {
       setLoading(false);
     }
@@ -82,26 +94,21 @@ navigate("/dashboard");
 
   return (
     <div className="login-page">
-
       {/* Background glow */}
       <div className="bg-glow glow-one"></div>
       <div className="bg-glow glow-two"></div>
 
       <div className="login-container">
-
         {/* =================================================
             LEFT SIDE
         ================================================= */}
-
         <section className="project-visual">
-
           <div className="left-brand">
             <span className="logo-dot"></span>
             <span>3D ANNOTATE</span>
           </div>
 
           {/* ABSTRACT VISUAL */}
-
           <div className="abstract-background">
             <svg
               className="wave-bg"
@@ -115,7 +122,6 @@ navigate("/dashboard");
                 strokeWidth="1"
                 opacity="0.8"
               />
-
               <path
                 d="M-10,40 C30,40 45,70 110,50"
                 fill="none"
@@ -123,7 +129,6 @@ navigate("/dashboard");
                 strokeWidth="0.5"
                 opacity="0.6"
               />
-
               <path
                 d="M-10,30 C30,30 35,80 110,40"
                 fill="none"
@@ -140,21 +145,9 @@ navigate("/dashboard");
                   x2="100%"
                   y2="0%"
                 >
-                  <stop
-                    offset="0%"
-                    stopColor="#472353"
-                    stopOpacity="0"
-                  />
-                  <stop
-                    offset="50%"
-                    stopColor="#e07aff"
-                    stopOpacity="1"
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor="#290042"
-                    stopOpacity="0.2"
-                  />
+                  <stop offset="0%" stopColor="#472353" stopOpacity="0" />
+                  <stop offset="50%" stopColor="#e07aff" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#290042" stopOpacity="0.2" />
                 </linearGradient>
 
                 <linearGradient
@@ -164,21 +157,9 @@ navigate("/dashboard");
                   x2="100%"
                   y2="0%"
                 >
-                  <stop
-                    offset="0%"
-                    stopColor="#8700a9"
-                    stopOpacity="0"
-                  />
-                  <stop
-                    offset="50%"
-                    stopColor="#d455ff"
-                    stopOpacity="1"
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor="#472353"
-                    stopOpacity="0.5"
-                  />
+                  <stop offset="0%" stopColor="#8700a9" stopOpacity="0" />
+                  <stop offset="50%" stopColor="#d455ff" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#472353" stopOpacity="0.5" />
                 </linearGradient>
 
                 <linearGradient
@@ -188,21 +169,9 @@ navigate("/dashboard");
                   x2="100%"
                   y2="0%"
                 >
-                  <stop
-                    offset="0%"
-                    stopColor="#a500d0"
-                    stopOpacity="0"
-                  />
-                  <stop
-                    offset="40%"
-                    stopColor="#e07aff"
-                    stopOpacity="1"
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor="#1b002b"
-                    stopOpacity="0"
-                  />
+                  <stop offset="0%" stopColor="#a500d0" stopOpacity="0" />
+                  <stop offset="40%" stopColor="#e07aff" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#1b002b" stopOpacity="0" />
                 </linearGradient>
               </defs>
             </svg>
@@ -214,7 +183,6 @@ navigate("/dashboard");
           </div>
 
           {/* LEFT TEXT */}
-
           <div className="project-info">
             <h1>
               Visualize.
@@ -232,63 +200,76 @@ navigate("/dashboard");
           </div>
 
           {/* Bottom status */}
-
           <div className="project-status">
             <span className="status-dot"></span>
             <span>3D WORKSPACE</span>
             <span className="status-line"></span>
             <span>ONLINE</span>
           </div>
-
         </section>
 
         {/* =================================================
             RIGHT LOGIN SIDE
         ================================================= */}
-
         <section className="login-section">
-
           <div className="login-content">
-
             {/* WELCOME */}
-
             <div className="login-heading">
-              <p className="welcome-text">
-                WELCOME BACK!!!
-              </p>
-
-              <h2>
-                Sign in to your workspace
-              </h2>
-
+              <p className="welcome-text">WELCOME BACK!!!</p>
+              <h2>Sign in to your workspace</h2>
               <p className="login-description">
-                Continue working on your 3D projects and
-                annotations.
+                Continue working on your 3D projects and annotations.
               </p>
             </div>
 
+            {/* STATUS NOTIFICATIONS */}
+            {success && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(34, 197, 94, 0.15)",
+                  border: "1px solid rgba(34, 197, 94, 0.4)",
+                  color: "#4ade80",
+                  fontSize: "14px",
+                  marginBottom: "16px",
+                }}
+              >
+                <Check size={18} />
+                <span>{success}</span>
+              </div>
+            )}
+
+            {error && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(239, 68, 68, 0.15)",
+                  border: "1px solid rgba(239, 68, 68, 0.4)",
+                  color: "#f87171",
+                  fontSize: "14px",
+                  marginBottom: "16px",
+                }}
+              >
+                <AlertCircle size={18} />
+                <span>{error}</span>
+              </div>
+            )}
+
             {/* LOGIN FORM */}
-
-            <form
-              className="login-form"
-              onSubmit={handleSubmit}
-            >
-
+            <form className="login-form" onSubmit={handleSubmit}>
               {/* Email */}
-
               <div className="input-group">
-
-                <label htmlFor="email">
-                  Email address
-                </label>
-
+                <label htmlFor="email">Email address</label>
                 <div className="input-wrapper">
-
-                  <Mail
-                    className="input-icon"
-                    size={18}
-                  />
-
+                  <Mail className="input-icon" size={18} />
                   <input
                     id="email"
                     type="email"
@@ -297,41 +278,22 @@ navigate("/dashboard");
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
-
                 </div>
-
               </div>
 
               {/* Password */}
-
               <div className="input-group password-group">
-
-                <label htmlFor="password">
-                  Password
-                </label>
-
+                <label htmlFor="password">Password</label>
                 <div className="input-wrapper">
-
-                  <Lock
-                    className="input-icon"
-                    size={18}
-                  />
-
+                  <Lock className="input-icon" size={18} />
                   <input
                     id="password"
-                    type={
-                      showPassword
-                        ? "text"
-                        : "password"
-                    }
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={password}
-                    onFocus={() =>
-                      setShowRequirements(true)
-                    }
+                    onFocus={() => setShowRequirements(true)}
                     onChange={(e) => {
                       const value = e.target.value;
-
                       setPassword(value);
 
                       const isValid =
@@ -345,145 +307,89 @@ navigate("/dashboard");
                     }}
                     required
                   />
-
                   <button
                     type="button"
                     className="eye-button"
-                    onClick={() =>
-                      setShowPassword(!showPassword)
-                    }
+                    onClick={() => setShowPassword(!showPassword)}
                     aria-label={
-                      showPassword
-                        ? "Hide password"
-                        : "Show password"
+                      showPassword ? "Hide password" : "Show password"
                     }
                   >
-                    {showPassword ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <Eye size={18} />
-                    )}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
-
                 </div>
 
                 {/* Password popup */}
-
-                {showRequirements &&
-                  password.length > 0 &&
-                  !passwordValid && (
-                    <div className="password-popup">
-
-                      <div className="popup-title">
-                        Password requirements
-                      </div>
-
-                      <PasswordRequirement
-                        valid={requirements.length}
-                        text="At least 8 characters"
-                      />
-
-                      <PasswordRequirement
-                        valid={requirements.uppercase}
-                        text="One uppercase letter"
-                      />
-
-                      <PasswordRequirement
-                        valid={requirements.lowercase}
-                        text="One lowercase letter"
-                      />
-
-                      <PasswordRequirement
-                        valid={requirements.number}
-                        text="One number"
-                      />
-
-                      <PasswordRequirement
-                        valid={requirements.special}
-                        text="One special character"
-                      />
-
-                    </div>
-                  )}
-
+                {showRequirements && password.length > 0 && !passwordValid && (
+                  <div className="password-popup">
+                    <div className="popup-title">Password requirements</div>
+                    <PasswordRequirement
+                      valid={requirements.length}
+                      text="At least 8 characters"
+                    />
+                    <PasswordRequirement
+                      valid={requirements.uppercase}
+                      text="One uppercase letter"
+                    />
+                    <PasswordRequirement
+                      valid={requirements.lowercase}
+                      text="One lowercase letter"
+                    />
+                    <PasswordRequirement
+                      valid={requirements.number}
+                      text="One number"
+                    />
+                    <PasswordRequirement
+                      valid={requirements.special}
+                      text="One special character"
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* Error message */}
-
-              {error && (
-                <p
-                  style={{
-                    color: "#ff6b6b",
-                    fontSize: "14px",
-                    marginTop: "8px",
-                  }}
-                >
-                  {error}
-                </p>
-              )}
-
               {/* Remember / Forgot */}
-
               <div className="login-options">
-
                 <label className="remember">
-
                   <input type="checkbox" />
-
-                  <span>
-                    Remember me
-                  </span>
-
+                  <span>Remember me</span>
                 </label>
-
-                <a
-                  href="#"
-                  className="forgot"
-                >
+                <a href="#" className="forgot">
                   Forgot password?
                 </a>
-
               </div>
 
               {/* Login button */}
-
               <button
                 type="submit"
                 className="login-button"
-                disabled={loading}
+                disabled={loading || !!success}
               >
                 <span>
-                  {loading ? "Signing in..." : "Sign in"}
+                  {loading
+                    ? "Signing in..."
+                    : success
+                    ? "Redirecting..."
+                    : "Sign in"}
                 </span>
-
                 <ArrowRight size={19} />
               </button>
-
             </form>
 
             {/* SOCIAL LOGIN */}
-
             <div className="login-divider">
-
               <span></span>
-
-              <p>
-                OR CONTINUE WITH
-              </p>
-
+              <p>OR CONTINUE WITH</p>
               <span></span>
-
             </div>
 
             <div className="social-buttons">
-
-              {/* Google */}
-
+              {/* Google Button */}
               <button
                 type="button"
                 className="social-button"
                 onClick={handleGoogleLogin}
                 aria-label="Continue with Google"
+                title="Continue with Google"
               >
                 <svg
                   className="google-icon"
@@ -494,17 +400,14 @@ navigate("/dashboard");
                     fill="#4285F4"
                     d="M21.35 12.27c0-.79-.07-1.54-.2-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42z"
                   />
-
                   <path
                     fill="#34A853"
                     d="M12 21.5c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.55 0-4.71-1.72-5.49-4.03H3.26v2.53A9.74 9.74 0 0 0 12 21.5z"
                   />
-
                   <path
                     fill="#FBBC05"
                     d="M6.51 13.58A5.85 5.85 0 0 1 6.2 12c0-.55.11-1.09.31-1.58V7.89H3.26A9.5 9.5 0 0 0 2.25 12c0 1.48.35 2.88 1.01 4.11l3.25-2.53z"
                   />
-
                   <path
                     fill="#EA4335"
                     d="M12 6.39c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.83 3.44 14.63 2.5 12 2.5a9.74 9.74 0 0 0-8.74 5.39l3.25 2.53C7.29 8.11 9.45 6.39 12 6.39z"
@@ -513,7 +416,6 @@ navigate("/dashboard");
               </button>
 
               {/* Apple */}
-
               <button
                 type="button"
                 className="social-button"
@@ -531,44 +433,35 @@ navigate("/dashboard");
                   />
                 </svg>
               </button>
-
             </div>
 
             {/* CREATE ACCOUNT */}
-
             <div className="register-text">
-
-              <span>
-                Don't have an account?
-              </span>
-
-              <Link to="/register">
-                Create account
-              </Link>
-
+              <span>Don't have an account?</span>
+              <Link
+  to={
+    searchParams.get("redirect")
+      ? `/register?redirect=${encodeURIComponent(
+          searchParams.get("redirect")!
+        )}`
+      : "/register"
+  }
+>
+  Create account
+</Link>
             </div>
 
             {/* FOOTER */}
-
             <div className="login-footer">
-
-              <span>
-                © 2026 3D Annotate
-              </span>
-
+              <span>© 2026 3D Annotate</span>
               <div>
                 <span>Privacy</span>
                 <span>Support</span>
               </div>
-
             </div>
-
           </div>
-
         </section>
-
       </div>
-
     </div>
   );
 }
@@ -585,19 +478,8 @@ function PasswordRequirement({
   text: string;
 }) {
   return (
-    <div
-      className={
-        valid
-          ? "requirement valid"
-          : "requirement invalid"
-      }
-    >
-      {valid ? (
-        <Check size={15} />
-      ) : (
-        <X size={15} />
-      )}
-
+    <div className={valid ? "requirement valid" : "requirement invalid"}>
+      {valid ? <Check size={15} /> : <X size={15} />}
       <span>{text}</span>
     </div>
   );
