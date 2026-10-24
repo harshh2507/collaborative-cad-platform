@@ -438,7 +438,20 @@ function Login() {
             {/* CREATE ACCOUNT */}
             <div className="register-text">
               <span>Don't have an account?</span>
-              <Link to="/register">Create account</Link>
+
+              
+<Link
+  to={
+    searchParams.get("redirect")
+      ? `/register?redirect=${encodeURIComponent(
+          searchParams.get("redirect")!
+        )}`
+      : "/register"
+  }
+>
+  Create account
+</Link>
+
             </div>
 
             {/* FOOTER */}

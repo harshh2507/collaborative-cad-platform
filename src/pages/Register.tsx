@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Mail,
   Lock,
@@ -14,7 +14,8 @@ import {
 
 function Register() {
   const navigate = useNavigate();
-
+const [searchParams] = useSearchParams();
+const redirectTo = searchParams.get("redirect");
   // Form input states
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -119,11 +120,22 @@ function Register() {
       }
 
       // Success notification and redirect to login
-      setSuccess("Account created successfully! Please log in...");
+// Preserve the invitation destination after registration.
+setSuccess("Account created successfully! Please log in...");
 
-      setTimeout(() => {
-        navigate("/login");
-      }, 1800);
+setTimeout(() => {
+  if (
+    redirectTo &&
+    redirectTo.startsWith("/") &&
+    !redirectTo.startsWith("//")
+  ) {
+    navigate(`/login?redirect=${encodeURIComponent(redirectTo)}`, {
+      replace: true,
+    });
+  } else {
+    navigate("/login", { replace: true });
+  }
+}, 1800);
 
     } catch (err: any) {
       console.error("Registration error:", err);
@@ -422,7 +434,15 @@ function Register() {
           ================================================= */}
           <div className="register-login-text">
             <span>Already have an account?</span>
-            <Link to="/login">Sign in</Link>
+<Link
+  to={
+    redirectTo
+      ? `/login?redirect=${encodeURIComponent(redirectTo)}`
+      : "/login"
+  }
+>
+  Sign in
+</Link>
           </div>
 
           {/* =================================================

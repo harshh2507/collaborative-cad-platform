@@ -109,6 +109,10 @@ export default function ProfessionalCADApp() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+const [inviteRole, setInviteRole] = useState<"editor" | "reviewer" | "viewer">("editor");
+const [generatedInviteLink, setGeneratedInviteLink] = useState("");
+const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
 
   // 3D Model State
   const [modelProps, setModelProps] = useState<ModelProps>({
@@ -124,7 +128,7 @@ export default function ProfessionalCADApp() {
   const currentUserRole = (user as any)?.role || "Owner";
 
   // Initial Team list with current user
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
+  const [, setTeamMembers] = useState<TeamMember[]>([
     {
       id: "me",
       name: currentUserName,
@@ -269,38 +273,101 @@ export default function ProfessionalCADApp() {
 
   // Invite Link Generator
   const handleGenerateInvite = () => {
-    const baseUrl = window.location.origin;
-    const inviterName = encodeURIComponent(currentUserName);
-    
     const activeProject = selectedProject || projects[0];
-    const projectQuery = activeProject
-      ? `&projectId=${activeProject.id}&projectName=${encodeURIComponent(activeProject.name)}`
-      : "";
 
-    const inviteLink = `${baseUrl}/invite?from=${inviterName}&fromEmail=${encodeURIComponent(currentUserEmail)}${projectQuery}`;
+    if (!activeProject) {
+      showNotify("Create or select a project before inviting teammates.", "info");
+      return;
+    }
 
-    navigator.clipboard
-      .writeText(inviteLink)
-      .then(() => {
-        showNotify("Invite link copied! Opening this link will bring teammates directly into your project.", "success");
-      })
-      .catch(() => {
-        showNotify(`Invite link: ${inviteLink}`, "info");
-      });
+    setGeneratedInviteLink("");
+    setInviteRole("editor");
+    setIsInviteModalOpen(true);
   };
 
-  const handleImport = async (projectName: string, description: string) => {
-    if (!projectName.trim()) return;
+  const handleCreateInvitation = async () => {
+    const activeProject = selectedProject || projects[0];
+
+    if (!activeProject || isGeneratingInvite) return;
+
+    setIsGeneratingInvite(true);
 
     try {
       const token = localStorage.getItem("cad_platform_token");
-      const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+      const backendUrl = (
+        import.meta.env.VITE_API_URL || "http://localhost:5000/api")
+      .replace(/\/+$/, "");
 
+      if (!token) {
+        throw new Error("Please log in again before creating an invitation.");
+      }
+
+      const response = await fetch(
+        `${backendUrl}/projects/${encodeURIComponent(activeProject.id)}/invitations`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ role: inviteRole }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Could not create invitation.");
+      }
+
+      if (!data.inviteLink) {
+        throw new Error("The server did not return an invitation link.");
+      }
+
+      setGeneratedInviteLink(data.inviteLink);
+      showNotify("Invitation link generated successfully.", "success");
+    } catch (error) {
+      showNotify(
+        error instanceof Error ? error.message : "Could not create invitation.",
+        "info"
+      );
+    } finally {
+      setIsGeneratingInvite(false);
+    }
+  };
+
+  const handleCopyInviteLink = async () => {
+    if (!generatedInviteLink) return;
+
+    try {
+      await navigator.clipboard.writeText(generatedInviteLink);
+      showNotify("Invitation link copied to clipboard.", "success");
+    } catch {
+      showNotify(
+        "Clipboard access failed. Select and copy the invitation link manually.",
+        "info"
+      );
+    }
+  };
+
+  // Create a project through the existing backend API.
+  const handleImport = async (projectName: string, description: string) => {
+    const token = localStorage.getItem("cad_platform_token");
+    const backendUrl = (
+      import.meta.env.VITE_API_URL || "http://localhost:5000/api")
+    .replace(/\/+$/, "");
+
+    if (!token) {
+      showNotify("Please log in again before creating a project.", "info");
+      return;
+    }
+
+    try {
       const response = await fetch(`${backendUrl}/projects`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           project_name: projectName.trim(),
@@ -309,26 +376,45 @@ export default function ProfessionalCADApp() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Could not create project");
 
-      const p = data.project || data;
-      const newProject: Project = {
-        id: String(p.project_id ?? p.id ?? Date.now()),
-        name: p.project_name ?? projectName.trim(),
-        date: new Date().toLocaleDateString(),
+      if (!response.ok) {
+        throw new Error(data.message || "Could not create the project.");
+      }
+
+      // Refresh from the server so existing projects remain sourced from the database.
+      const projectsResponse = await projectsApi.list();
+      const backendProjects = Array.isArray(projectsResponse)
+        ? projectsResponse
+        : ((projectsResponse as any)?.projects ?? []);
+
+      const formattedProjects: Project[] = backendProjects.map((p: any) => ({
+        id: String(p.project_id ?? p.id),
+        name: p.project_name ?? p.name ?? "Untitled Project",
+        date: p.created_at
+          ? new Date(p.created_at).toLocaleDateString()
+          : "Recently created",
         collaborators: [currentUserName],
         fileType: "CAD",
-      };
+      }));
 
-      setProjects((current) => [...current, newProject]);
-      setSelectedProject(newProject);
+      setProjects(formattedProjects);
+
+      const created = data.project ?? data;
+      const createdId = created.project_id ?? created.id;
+      const newProject: Project | undefined = createdId != null
+        ? formattedProjects.find((p) => p.id === String(createdId))
+        : undefined;
+
+      if (newProject) {
+        setSelectedProject(newProject);
+        setCurrentView("WORKBENCH");
+      }
+
       setIsImportModalOpen(false);
-      setCurrentView("WORKBENCH");
-      showNotify(`Project ${newProject.name} created successfully!`);
+      showNotify("Project created successfully.", "success");
     } catch (error) {
-      console.error("Project creation failed:", error);
       showNotify(
-        error instanceof Error ? error.message : "Could not create project",
+        error instanceof Error ? error.message : "Could not create the project.",
         "info"
       );
     }
@@ -409,7 +495,6 @@ export default function ProfessionalCADApp() {
       {currentView === "HUB" ? (
         <ProjectHub
           projects={projects}
-          teamMembers={teamMembers}
           currentUserName={currentUserName}
           currentUserEmail={currentUserEmail}
           currentUserRole={currentUserRole}
@@ -446,6 +531,90 @@ export default function ProfessionalCADApp() {
           onConfirm={handleImport}
         />
       )}
+      
+{isInviteModalOpen && (
+  <div className="modal-overlay-blur">
+    <div className="modal-card">
+      <div className="modal-header">
+        <h3>Invite Collaborators</h3>
+        <X
+          className="close-icon"
+          size={16}
+          onClick={() => !isGeneratingInvite && setIsInviteModalOpen(false)}
+        />
+      </div>
+      <div className="modal-body">
+        <p>Select the access level for your teammate.</p>
+
+      <label htmlFor="invite-role">Project role</label>
+      <select
+        id="invite-role"
+        value={inviteRole}
+        onChange={(e) =>
+          setInviteRole(
+            e.target.value as "editor" | "reviewer" | "viewer"
+          )
+        }
+        disabled={isGeneratingInvite || !!generatedInviteLink}
+      >
+        <option value="editor">Editor — can edit the project</option>
+        <option value="reviewer">Reviewer — can review the project</option>
+        <option value="viewer">Viewer — can view the project</option>
+      </select>
+
+      {generatedInviteLink && (
+        <div>
+          <label htmlFor="generated-invite-link">
+            Invitation link
+          </label>
+          <input
+            id="generated-invite-link"
+            type="text"
+            value={generatedInviteLink}
+            readOnly
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          <button
+            type="button"
+            onClick={handleCopyInviteLink}
+          >
+            Copy link
+          </button>
+        </div>
+      )}
+
+      </div>
+      <div className="modal-footer">
+        {!generatedInviteLink && (
+          <button
+            type="button"
+            onClick={handleCreateInvitation}
+            disabled={isGeneratingInvite}
+          >
+            {isGeneratingInvite
+              ? "Generating..."
+              : "Generate invitation"}
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setIsInviteModalOpen(false)}
+          disabled={isGeneratingInvite}
+        >
+          Close
+        </button>
+      </div>
+
+        
+      <p className="project-hint">
+        Invitation links expire after 72 hours and can be used once.
+      </p>
+    </div>
+  </div>
+)}
+
+
     </div>
   );
 }
@@ -454,7 +623,6 @@ export default function ProfessionalCADApp() {
 
 function ProjectHub({
   projects,
-  teamMembers,
   currentUserName,
   currentUserEmail,
   currentUserRole,
@@ -466,7 +634,38 @@ function ProjectHub({
   onInviteSent,
 }: any) {
   const [activeTab, setActiveTab] = useState<HubTab>("projects");
+  const [selectedTeamProject, setSelectedTeamProject] = useState("");
+  const [projectTeamMembers, setProjectTeamMembers] = useState<TeamMember[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const loadProjectTeam = async (projectId: string) => {
+  if (!projectId) {
+    setProjectTeamMembers([]);
+    return;
+  }
 
+  try {
+    setTeamLoading(true);
+
+    const response = await projectsApi.getTeamMembers(projectId);
+
+const members: TeamMember[] = response.members.map((member) => ({
+  id: String(member.user_id),
+  name: member.name,
+  email: member.email,
+  role: member.role,
+  joinedAt: "",
+  status: "Offline",
+}));
+
+setProjectTeamMembers(members);
+  } catch (error) {
+    console.error("Failed to load project team:", error);
+    showNotify("Failed to load team members", "info");
+    setProjectTeamMembers([]);
+  } finally {
+    setTeamLoading(false);
+  }
+};
   const [editName, setEditName] = useState(currentUserName);
   const [currPassword, setCurrPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -474,6 +673,7 @@ function ProjectHub({
   const [unitPreference, setUnitPreference] = useState("Millimeters (mm)");
   const [shadingPreference, setShadingPreference] = useState("Standard Shaded");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  
 
   useEffect(() => {
     setEditName(currentUserName);
@@ -642,6 +842,27 @@ function ProjectHub({
                 <Share2 size={16} /> Generate Invite Link
               </button>
             </header>
+            <div className="team-project-selector" style={{ marginBottom: "20px" }}>
+  <label htmlFor="team-project-select">Select Project: </label>
+
+  <select
+    id="team-project-select"
+    value={selectedTeamProject}
+    onChange={(e) => {
+      const projectId = e.target.value;
+      setSelectedTeamProject(projectId);
+      loadProjectTeam(projectId);
+    }}
+  >
+    <option value="">Choose a project</option>
+    {projects.map((project: Project) => (
+      <option key={project.id} value={String(project.id)}>
+        {project.name}
+      </option>
+    ))}
+  </select>
+</div>
+{teamLoading && <p>Loading team members...</p>}
             <div className="team-table-container">
               <table className="team-table">
                 <thead>
@@ -654,7 +875,7 @@ function ProjectHub({
                   </tr>
                 </thead>
                 <tbody>
-                  {teamMembers.map((member: TeamMember) => (
+                  {(selectedTeamProject ? projectTeamMembers : []).map((member: TeamMember) => (
                     <tr key={member.id}>
                       <td className="user-cell">
                         <div className="avatar small">

@@ -110,6 +110,15 @@ export const projectsApi = {
     request<ProjectVersion[]>(`/projects/${projectId}/versions`, {
       method: 'GET',
     }),
+  getTeamMembers: (projectId: string) =>
+  request<{ members: {
+    user_id: number;
+    name: string;
+    email: string;
+    role: string;
+  }[] }>(`/projects/${projectId}/team`, {
+    method: "GET",
+  }),
 };
 
 export const annotationsApi = {
