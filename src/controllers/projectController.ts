@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
-import { createProject,getProjects,getProjectById,addProjectMember,getProjectMemberRole,deleteProject } from "../services/projectService";
+import { createProject,getProjects,getProjectById,addProjectMember,getProjectMemberRole,deleteProject,getProjectTeamMembers, } from "../services/projectService";
 import { AuthenticatedUser } from "../types/auth";
-
 export const createProjectController = async (
   req: Request,
   res: Response
@@ -221,6 +220,46 @@ export const deleteProjectController = async (
 
     return res.status(500).json({
       message: "Internal server error"
+    });
+  }
+};
+export const getProjectTeamMembersController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const projectId = Number(req.params.projectId);
+    const user = (req as any).user;
+
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      return res.status(400).json({ message: "Invalid project ID" });
+    }
+
+    if (!user?.user_id) {
+      return res.status(401).json({
+        message: "User authentication required",
+      });
+    }
+
+    const currentRole = await getProjectMemberRole(
+      projectId,
+      user.user_id
+    );
+
+    if (!currentRole) {
+      return res.status(403).json({
+        message: "You are not a member of this project",
+      });
+    }
+
+    const members = await getProjectTeamMembers(projectId);
+
+    return res.status(200).json({ members });
+  } catch (error) {
+    console.error("Get project team members error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
     });
   }
 };
