@@ -1582,7 +1582,7 @@ const CSS = `
   --accent: #4772B3;        
   --accent-cyan: rgba(64,232,244,1);
   --accent-orange: #FF7700; 
-  --text-main: #E6E6E6;
+  --text-main: #f4f4f4;
   --text-dim: #999999;
   --border: #000000;        
   --border-light: #3E3E3E;  
@@ -1751,6 +1751,44 @@ const CSS = `
 .empty-msg { color: var(--text-dim); padding: 15px; text-align: center; }
 
 /* UTILS */
+/* Dark theme inputs and selects with blue borders and hover glow matching profile card */
+select, .account-select, select.project-input, .modal-body select,
+.modal-body input[type="text"], .modal-body input:not([type]), .modal-body input.project-input {
+  background-color: #111111;
+  color: #ffffff;
+  border: 1px solid rgba(64, 232, 244, 0.35);
+  border-radius: 6px;
+  padding: 11px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+  appearance: auto;
+  -webkit-appearance: menulist;
+  -moz-appearance: menulist;
+  cursor: pointer;
+}
+
+/* Hover glow effect matching the account-card style */
+select:hover, .account-select:hover, select.project-input:hover, 
+.modal-body select:hover, .modal-body input:hover {
+  border-color: rgba(64, 232, 244, 0.6);
+  box-shadow: 0 0 10px rgba(64, 232, 244, 0.15);
+}
+
+/* Focus state with active cyan glow */
+select:focus, .account-select:focus, select.project-input:focus, 
+.modal-body select:focus, .modal-body input:focus {
+  border-color: rgba(64, 232, 244, 1);
+  box-shadow: 0 0 0 2px rgba(64, 232, 244, 0.15);
+}
+
+/* Dropdown option items */
+select option {
+  background-color: #0c0c0c;
+  color: #ffffff;
+  padding: 8px;
+}
 .btn-primary { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 4px; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.15s; font-size: 13px; }
 .btn-primary:hover { filter: brightness(1.1); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
