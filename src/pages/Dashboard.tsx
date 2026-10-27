@@ -128,7 +128,7 @@ const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const currentUserRole = (user as any)?.role || "Owner";
 
   // Initial Team list with current user
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
+  const [, setTeamMembers] = useState<TeamMember[]>([
     {
       id: "me",
       name: currentUserName,
