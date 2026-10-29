@@ -1570,7 +1570,6 @@ function ChatPanel({ messages, setMessages }: any) {
     </div>
   );
 }
-
 /* ============================== CSS Styles ============================== */
 
 const CSS = `
@@ -1582,7 +1581,7 @@ const CSS = `
   --accent: #4772B3;        
   --accent-cyan: rgba(64,232,244,1);
   --accent-orange: #FF7700; 
-  --text-main: #E6E6E6;
+  --text-main: #f4f4f4;
   --text-dim: #999999;
   --border: #000000;        
   --border-light: #3E3E3E;  
@@ -1592,18 +1591,43 @@ const CSS = `
   --danger: #e2584a;
 }
 
-* { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; }
 
 .app-container { height: 100vh; background: var(--bg-dark); color: var(--text-main); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; font-size: 13px; }
 
-/* Overlays & Modals */
-.notification-toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); z-index: 99999; background: var(--bg-raise); border: 1px solid var(--border-light); padding: 10px 18px; border-radius: 6px; display: flex; align-items: center; gap: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
+/* Overlays & Modals - Fixed Z-Index Layering */
+.notification-toast { 
+  position: fixed; 
+  top: 30px; 
+  left: 50%; 
+  transform: translateX(-50%); 
+  z-index: 2147483647; /* Maximum safe integer z-index to ensure it is always on top */
+  background: var(--bg-raise); 
+  border: 1px solid var(--border-light); 
+  padding: 10px 18px; 
+  border-radius: 6px; 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  box-shadow: 0 6px 20px rgba(0,0,0,0.6); 
+  pointer-events: auto;
+}
 .notification-toast.success { border-left: 4px solid var(--success); }
 .notification-toast.info { border-left: 4px solid var(--accent); }
 .toast-content { font-size: 13px; color: var(--text-main); }
 
-.modal-overlay-blur { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 99999; backdrop-filter: blur(2px); }
-.error-input-modal, .modal-card { width: 440px; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); display: flex; flex-direction: column; overflow: hidden; animation: popIn 0.2s ease-out; }
+.modal-overlay-blur { 
+  position: fixed; 
+  inset: 0; 
+  background: rgba(0,0,0,0.7); 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  z-index: 1000000; /* Sits nicely below toasts but above all app contents */
+  backdrop-filter: blur(2px); 
+}
+
+.error-input-modal, .modal-card { width: 440px; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); display: flex; flex-direction: column; overflow: visible; animation: popIn 0.2s ease-out; }
 
 @keyframes popIn {
   from { transform: scale(0.95); opacity: 0; }
@@ -1614,7 +1638,7 @@ const CSS = `
 .modal-header h3 { margin: 0; font-size: 14px; font-weight: normal; }
 .close-icon { cursor: pointer; color: var(--text-dim); transition: 0.1s; }
 .close-icon:hover { color: white; }
-.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 10px; overflow: visible; }
 .modal-body label { font-size: 12px; color: var(--text-dim); }
 .modal-body textarea { background: var(--bg-dark); border: 1px solid var(--border-light); border-radius: 4px; padding: 12px; color: white; font-family: inherit; font-size: 13px; resize: none; height: 100px; outline: none; }
 .modal-body textarea:focus { border-color: var(--accent); }
@@ -1751,6 +1775,40 @@ const CSS = `
 .empty-msg { color: var(--text-dim); padding: 15px; text-align: center; }
 
 /* UTILS */
+select, .account-select, select.project-input, .modal-body select,
+.modal-body input[type="text"], .modal-body input:not([type]), .modal-body input.project-input {
+  background-color: #111111;
+  color: #ffffff;
+  border: 1px solid rgba(64, 232, 244, 0.35);
+  border-radius: 6px;
+  padding: 11px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+  appearance: auto;
+  -webkit-appearance: menulist;
+  -moz-appearance: menulist;
+  cursor: pointer;
+}
+
+select:hover, .account-select:hover, select.project-input:hover, 
+.modal-body select:hover, .modal-body input:hover {
+  border-color: rgba(64, 232, 244, 0.6);
+  box-shadow: 0 0 10px rgba(64, 232, 244, 0.15);
+}
+
+select:focus, .account-select:focus, select.project-input:focus, 
+.modal-body select:focus, .modal-body input:focus {
+  border-color: rgba(64, 232, 244, 1);
+  box-shadow: 0 0 0 2px rgba(64, 232, 244, 0.15);
+}
+
+select option {
+  background-color: #0c0c0c;
+  color: #ffffff;
+  padding: 8px;
+}
 .btn-primary { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 4px; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.15s; font-size: 13px; }
 .btn-primary:hover { filter: brightness(1.1); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
