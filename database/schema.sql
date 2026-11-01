@@ -587,3 +587,11 @@ ALTER TABLE ONLY public.tasks
 
 \unrestrict 3ZGPhQRDH3peNWSShYE958OiFEvJu1hVSX5huexxCYHUOHF2lk6sYAU6TPtZqpG
 
+
+
+-- Latest collaborative scene snapshot per project.
+CREATE TABLE IF NOT EXISTS public.project_scenes (
+  project_id INTEGER PRIMARY KEY REFERENCES public.projects(project_id) ON DELETE CASCADE,
+  scene_data JSONB NOT NULL DEFAULT '{"model": null, "primitives": [], "annotations": []}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

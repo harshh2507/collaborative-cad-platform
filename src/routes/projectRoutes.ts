@@ -1,4 +1,10 @@
 import { Router } from "express";
+import {
+  createInvitationController,
+  getInvitationController,
+  acceptInvitationController,
+  getProjectInvitationsController,
+} from "../controllers/invitationController";
 import { authenticateToken } from "../middleware/authMiddleware";
 import upload from "../config/upload";
 import versionUpload from "../config/versionUpload";
@@ -44,6 +50,7 @@ import {
   deleteTaskController
 } from "../controllers/taskController";
 
+
 const router = Router();
 router.get(
   "/:projectId/invitations",
@@ -57,23 +64,14 @@ router.post(
   createInvitationController
 );
 
-// Preview and validate an invitation link (login not required)
-router.get(
-  "/invitations/:token",
-  getInvitationController
-);
 
-// Accept an invitation (login required)
-router.post(
-  "/invitations/:token/accept",
-  authenticateToken,
-  acceptInvitationController
-);
-router.get(
-  "/:projectId/team",
-  authenticateToken,
-  getProjectTeamMembersController
-);
+// Invitation validation is public so a recipient can open the link before login.
+router.get("/invitations/:token", getInvitationController);
+router.post("/invitations/:token/accept", authenticateToken, acceptInvitationController);
+router.post("/:projectId/invitations", authenticateToken, createInvitationController);
+router.get("/:projectId/invitations", authenticateToken, getProjectInvitationsController);
+
+
 router.post(
   "/",
   authenticateToken,
@@ -84,6 +82,12 @@ router.get(
   "/",
   authenticateToken,
   getProjectsController
+);
+
+router.get(
+  "/:projectId/members",
+  authenticateToken,
+  getProjectTeamMembersController
 );
 
 router.post(
@@ -103,6 +107,7 @@ router.post(
   "/:projectId/models/:modelId/versions",
   authenticateToken,
   versionUpload.single("file"),
+  handleUploadError,
   createModelVersionController
 );
 router.get(
@@ -164,11 +169,6 @@ router.get(
   "/:projectId/models",
   authenticateToken,
   getCadModelsController
-);
-router.delete(
-  "/:projectId",
-  authenticateToken,
-  deleteProjectController
 );
 router.get(
   "/:projectId",

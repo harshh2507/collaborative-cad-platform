@@ -110,6 +110,35 @@ export const getProjectByIdController = async (
     });
   }
 };
+
+export const getProjectTeamMembersController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const user = (req as Request & { user: AuthenticatedUser }).user;
+    if (!user?.user_id) {
+      return res.status(401).json({ message: "User authentication required" });
+    }
+
+    const projectId = Number(req.params.projectId);
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      return res.status(400).json({ message: "Invalid project ID" });
+    }
+
+    const role = await getProjectMemberRole(projectId, user.user_id);
+    if (!role) {
+      return res.status(403).json({ message: "You are not a member of this project" });
+    }
+
+    const members = await getProjectTeamMembers(projectId);
+    return res.status(200).json({ members });
+  } catch (error) {
+    console.error("Get project team members error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 export const addProjectMemberController = async (
   req: Request,
   res: Response

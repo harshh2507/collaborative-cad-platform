@@ -232,7 +232,8 @@ export const getProjectTeamMembers = async (projectId: number) => {
        u.user_id,
        u.name,
        u.email,
-       pm.role
+       pm.role,
+       pm.joined_at
      FROM project_members pm
      JOIN users u ON u.user_id = pm.user_id
      WHERE pm.project_id = $1
@@ -244,3 +245,10 @@ export const getProjectTeamMembers = async (projectId: number) => {
 
   return result.rows;
 };
+
+/**
+ * Returns whether a project member may modify shared scene state.
+ * Owners and editors can write; reviewers and viewers are read-only.
+ */
+export const canEditProject = (role: string | null | undefined): boolean =>
+  role === "owner" || role === "editor";

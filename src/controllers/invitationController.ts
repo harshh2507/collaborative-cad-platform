@@ -65,8 +65,9 @@ export const createInvitationController = async (
       role as InvitationRole
     );
 
+    const requestOrigin = req.get("origin");
     const frontendUrl = (
-      process.env.FRONTEND_URL || "http://localhost:5173"
+      process.env.FRONTEND_URL || requestOrigin || "http://localhost:5174"
     ).replace(/\/+$/, "");
 
     const inviteLink =
