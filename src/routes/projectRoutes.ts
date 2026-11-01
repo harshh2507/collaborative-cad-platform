@@ -16,15 +16,9 @@ import {
   getProjectsController,
   getProjectByIdController,
   addProjectMemberController,
-  deleteProjectController,
-  getProjectTeamMembersController,
+  getProjectTeamMembersController
 } from "../controllers/projectController";
-import {
-  createInvitationController,
-  getInvitationController,
-  acceptInvitationController,
-  getProjectInvitationsController
-} from "../controllers/invitationController";
+
 import {
   createCadModelController,
   getCadModelsController
@@ -52,17 +46,6 @@ import {
 
 
 const router = Router();
-router.get(
-  "/:projectId/invitations",
-  authenticateToken,
-  getProjectInvitationsController
-);
-// Create an invitation link (project owner only)
-router.post(
-  "/:projectId/invitations",
-  authenticateToken,
-  createInvitationController
-);
 
 
 // Invitation validation is public so a recipient can open the link before login.
