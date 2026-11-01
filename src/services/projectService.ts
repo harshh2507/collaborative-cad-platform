@@ -226,3 +226,29 @@ export const deleteProject = async (
     client.release();
   }
 };
+export const getProjectTeamMembers = async (projectId: number) => {
+  const result = await pool.query(
+    `SELECT
+       u.user_id,
+       u.name,
+       u.email,
+       pm.role,
+       pm.joined_at
+     FROM project_members pm
+     JOIN users u ON u.user_id = pm.user_id
+     WHERE pm.project_id = $1
+     ORDER BY
+       CASE WHEN pm.role = 'owner' THEN 0 ELSE 1 END,
+       u.name ASC`,
+    [projectId]
+  );
+
+  return result.rows;
+};
+
+/**
+ * Returns whether a project member may modify shared scene state.
+ * Owners and editors can write; reviewers and viewers are read-only.
+ */
+export const canEditProject = (role: string | null | undefined): boolean =>
+  role === "owner" || role === "editor";

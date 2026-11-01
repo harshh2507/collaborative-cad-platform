@@ -42,11 +42,12 @@ export const createModelVersion = async (
     versionedFileName
   );
 
-  // Rename the uploaded file
-  fs.renameSync(
-    filePath,
-    versionedFilePath
-  );
+  // Keep the original CAD model file intact. The model record points to it.
+  // Save this upload as a separate version so the original path never goes stale.
+  fs.copyFileSync(filePath, versionedFilePath);
+  if (path.resolve(filePath) !== path.resolve(versionedFilePath)) {
+    fs.unlinkSync(filePath);
+  }
 
   // Save the version in PostgreSQL
   const result = await pool.query(
